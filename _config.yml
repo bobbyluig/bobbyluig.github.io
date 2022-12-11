@@ -2,7 +2,7 @@ title: Standard Output
 name: Lujing Cen
 description: A place where I document my learnings.
 baseurl: ""
-url: "https://lujingcen.com"
+url: "https://www.lujingcen.com"
 
 remote_theme: "mmistakes/minimal-mistakes@4.24.0"
 plugins:
@@ -13,6 +13,10 @@ search: true
 permalink: /blog/:year/:month/:day/:slug/
 
 defaults:
+  - scope:
+      path: ""
+    values:
+      author_profile: true
   - scope:
       path: ""
       type: posts
