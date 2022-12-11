@@ -1,0 +1,50 @@
+title: Standard Output
+name: Lujing Cen
+description: A place where I document my learnings.
+baseurl: ""
+url: "https://lujingcen.com"
+
+remote_theme: "mmistakes/minimal-mistakes@4.24.0"
+plugins:
+  - jekyll-include-cache
+  - jekyll-feed
+
+search: true
+permalink: /blog/:year/:month/:day/:slug/
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: single
+      read_time: true
+      comments: true
+      share: true
+      related: true
+
+author:
+  name: "Lujing Cen"
+  avatar: "/assets/images/bio-photo.jpg"
+  bio: "Software Engineer at Plaid"
+  location: "San Francisco, CA"
+  links:
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/bobbyluig"
+    - label: "LinkedIn"
+      icon: "fab fa-fw fa-linkedin"
+      url: "https://www.linkedin.com/in/lujing-cen/"
+
+
+exclude:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
