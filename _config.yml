@@ -4,9 +4,8 @@ description: A place where I document my learnings.
 baseurl: ""
 url: "https://www.lujingcen.com"
 
-remote_theme: "mmistakes/minimal-mistakes@4.24.0"
+theme: minimal-mistakes-jekyll
 plugins:
-  - jekyll-include-cache
   - jekyll-feed
 
 search: true
