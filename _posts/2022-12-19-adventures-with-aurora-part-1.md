@@ -200,6 +200,3 @@ There are some important takeaways even though we had caused an incident and not
 - `innodb_flush_log_at_trx_commit` has limited impact in 1.x Aurora MySQL (and likely 2.x Aurora MySQL) for high throughput write workloads due to asynchronous commits and batched log writes.
 - Do not disable `binlog_order_commits` if you are running on 1.x Aurora MySQL or a MySQL version before 5.6.12 or 5.7.2. Even when disabled, the performance improvement is likely not noticeable if the bottleneck is related to I/O throughput.
 - Tuning database parameters can be dangerous, especially if they are not well known. Perform thorough and representative load testing before applying any changes to production.
-
-**Notice:** this series mostly focuses on 1.x Aurora MySQL. Database behavior can vary great between versions and workloads. Please verify any suggested changes before applying them to production systems.
-{: .notice--warning}
