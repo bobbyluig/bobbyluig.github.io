@@ -3,6 +3,7 @@ name: Lujing Cen
 description: A place where I document my learnings.
 baseurl: ""
 url: "https://www.lujingcen.com"
+repository: "bobbyluig/bobbyluig.github.io"
 
 theme: minimal-mistakes-jekyll
 plugins:
@@ -24,7 +25,8 @@ defaults:
       read_time: true
       comments: true
       share: true
-      related: true
+      related: false
+      toc_label: "Contents"
 
 author:
   name: "Lujing Cen"
@@ -44,6 +46,16 @@ analytics:
   google:
     tracking_id: "G-0N8JV9HFGZ"
     anonymize_ip: true
+
+comments:
+  provider: "giscus"
+  giscus:
+    repo_id: "R_kgDOImD8Kg"
+    category_name: "Announcements"
+    category_id: "DIC_kwDOImD8Ks4CTJNJ"
+    discussion_term: "pathname"
+    reactions_enabled: "1"
+    theme: "light"
 
 include:
   - "_pages"
