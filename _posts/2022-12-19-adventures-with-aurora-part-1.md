@@ -52,11 +52,11 @@ The binary log is written using group commit. The core idea is that if many tran
 
 The leader serially performs the last stage because the order of commits to the storage engine should ideally be the same as the order of operations in the binary log. Performance could be improved if followers ran the last stage themselves in separate threads, but it could result in a different commit ordering (although this usually does not matter).
 
-Lured by the promise of higher performance, we enabled the parameter in our load testing environment and found that it did have a positive impact on commit latency. We enabled `binlog_order_commits` in production to monitor its impact. Less than 24 hours later, the entire database goes down. 😱
+Lured by the promise of higher performance, we enabled the parameter in our load testing environment and found that it did have a positive impact on commit latency. We enabled `binlog_order_commits` in production to monitor its impact. Less than 24 hours later, the entire database goes down.
 
 ## Database Deadlock
 
-We know that transactions can deadlock, but the database has mechanisms to remedy this (usually by aborting one of the transactions in a deadlock). In this case however, no transactions were able to make progress. From metrics, it appeared that transactions were all blocked on the `COMMIT` statement. Interestingly, read-only transactions were able to proceed without any issues.
+We know that transactions can deadlock, but the database has mechanisms to remedy this (usually by aborting one of the transactions). In this case however, no transactions were able to make progress. From metrics, it appeared that transactions were all blocked on the `COMMIT` statement. Interestingly, read-only transactions were able to proceed without any issues.
 
 Clearly, there was some kind of deadlock within the database itself, and it was triggered by us changing the value of `binlog_order_commits`. However, we wanted to understand why this happened and why we were not able to catch it in other environments. We scoured the [MySQL Bug System](https://bugs.mysql.com/) looking for clues and came across bug [#68569](https://bugs.mysql.com/bug.php?id=68569). It looked similar to the issue we ran into, but it was not immediately clear what triggered the deadlock. We had to dive deeper—straight into MySQL source code.
 
@@ -165,7 +165,7 @@ int32_t get_prep_xids() {
 
 ### Lost Wake-Up
 
-If there are no threads waiting for the signal when `pthread_cond_signal` is called, the signal is lost. This is okay in some cases, but not if the lost signal causes a deadlock. It turns out that this is exactly the bug that caused our database to go down. 
+If there are no threads waiting for the signal when `pthread_cond_signal` is called, the signal is lost. This is okay in some cases, but not if the lost signal causes a deadlock. It turns out that this is exactly the bug that caused our database to go down.
 
 We had a hypothesis that the bug can only be triggered during a binary log rotation. That would explain why the deadlock took many hours to manifest even though we had a highly concurrent workload. Furthermore, we believed that the deadlock occurred somewhere in the `ordered_commit` function because application metrics indicated that write transactions were blocked on the `COMMIT` statement.
 

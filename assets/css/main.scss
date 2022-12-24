@@ -5,6 +5,10 @@ search: false
 
 @charset "utf-8";
 
+$serif: 'Roboto Slab', serif;
+$sans-serif: 'Roboto', sans-serif;
+$monospace: 'Inconsolata', monospace;
+
 @import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}"; // skin
 @import "minimal-mistakes"; // main partials
 
@@ -16,29 +20,45 @@ html {
   }
 }
 
+.page__title + .page__meta, .page__title + .comment__date {
+  margin-top: -0.425rem;
+}
+
+.page__inner-wrap {
+  header > * {
+    margin-bottom: 0.85rem;
+  }
+}
+
 .page__content {
   overflow-wrap: break-word;
 
   p, li, dl {
-    font-size: 0.85em;
+    font-size: 0.85rem;
   }
 
   p {
-    margin: 0 0 1em;
+    margin: 0 0 0.85rem;
   }
 
   p[class^="notice"] {
-    font-size: 0.75em !important;
-    margin: 0 0 1em !important; 
+    font-size: 0.85rem !important;
+    margin: 0 0 0.85rem !important; 
   }
 
   blockquote {
-    margin: 0 0 1em;
+    margin: 0 0 0.85rem;
+    padding: 0 0.85rem;
     font-style: normal;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    margin: 1.5em 0 0.5em;
+  h1, h2 {
+    margin: 1.7rem 0 0.425rem;
+    padding-bottom: 0.425rem;
+  }
+  
+  h3, h4, h5, h6 {
+    margin: 1.7rem 0 0.85rem;
   }
 
   .sidebar__right {
@@ -54,14 +74,18 @@ html {
       font-size: 1em;
     }
   }
-}
 
-p > code, a > code, li > code, figcaption > code, td > code {
-  background: rgba(175, 184, 193, 0.2);
-}
-
-div.highlighter-rouge, figure.highlight {
-  font-size: 0.65em;
-  line-height: 1.5;
-  margin: 0 0 1em;
+  p > code, a > code, li > code, figcaption > code, td > code {
+    background: rgba(175, 184, 193, 0.2);
+    font-size: 0.7rem;
+    display: inline-block; 
+    line-height: 1.1;
+    vertical-align: middle;
+  }
+  
+  div.highlighter-rouge, figure.highlight {
+    font-size: 0.7rem;
+    line-height: 1.5;
+    margin: 0 0 0.85rem;
+  }  
 }
