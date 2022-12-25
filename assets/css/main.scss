@@ -78,9 +78,8 @@ html {
   p > code, a > code, li > code, figcaption > code, td > code {
     background: rgba(175, 184, 193, 0.2);
     font-size: 0.7rem;
-    display: inline-block; 
-    line-height: 1.1;
-    vertical-align: middle;
+    font-size: 0.9em;
+    padding: 0.15em 0;
   }
   
   div.highlighter-rouge, figure.highlight {
