@@ -22,6 +22,11 @@ html {
   }
 }
 
+.page__title+.page__meta,
+.page__title+.comment__date {
+  margin-top: calc(-#{$--content-size} / 2);
+}
+
 .page__inner-wrap {
   header>* {
     margin-bottom: $--content-size;
