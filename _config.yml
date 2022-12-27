@@ -11,6 +11,8 @@ plugins:
   - jekyll-feed
 
 search: true
+search_full_content: true
+
 permalink: /blog/:year/:month/:day/:slug/
 
 defaults:

@@ -146,7 +146,7 @@ int MYSQL_BIN_LOG::new_file_impl(...) {
 
 Note that a transaction enters the prepared state in the flush stage and exits the prepared state in the commit stage. Binary log rotation only needs to know the number of transactions in a prepared state, so tracking is done through an atomic integer. We show the implementation of the `*_prep_xids` functions below since it is relevant for our discussion.
 
-```cpp
+```c
 void inc_prep_xids() {
   my_atomic_add32(&m_prep_xids, 1);
 }

@@ -9,6 +9,8 @@ $serif: 'Roboto Slab', serif;
 $sans-serif: 'Roboto', sans-serif;
 $monospace: 'Inconsolata', monospace;
 
+$--content-size: 0.85rem;
+
 @import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}"; // skin
 @import "minimal-mistakes"; // main partials
 
@@ -20,48 +22,79 @@ html {
   }
 }
 
-.page__title + .page__meta, .page__title + .comment__date {
-  margin-top: -0.425rem;
+.page__title+.page__meta,
+.page__title+.comment__date {
+  margin-top: -calc(#{$--content-size} / 2);
 }
 
 .page__inner-wrap {
-  header > * {
-    margin-bottom: 0.85rem;
+  header>* {
+    margin-bottom: $--content-size;
   }
 }
 
 .page__content {
   overflow-wrap: break-word;
 
-  p, li, dl {
-    font-size: 0.85rem;
-  }
-
-  p {
-    margin: 0 0 0.85rem;
-  }
-
-  p[class^="notice"] {
-    font-size: 0.85rem !important;
-    margin: 0 0 0.85rem !important; 
+  > {
+    blockquote,
+    ol,
+    p,
+    ul {
+      font-size: $--content-size;
+    }
   }
 
   blockquote {
-    margin: 0 0 0.85rem;
-    padding: 0 0.85rem;
     font-style: normal;
+    margin: 0 0 1em;
+    padding: 0 1em;
   }
 
-  h1, h2 {
-    margin: 1.7rem 0 0.425rem;
-    padding-bottom: 0.425rem;
+  h1,
+  h2 {
+    margin: calc(#{$--content-size} * 2) 0 calc(#{$--content-size} / 2);
+    padding-bottom: calc(#{$--content-size} / 2);
   }
-  
-  h3, h4, h5, h6 {
-    margin: 1.7rem 0 0.85rem;
+
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: calc(#{$--content-size} * 2) 0 $--content-size;
+  }
+
+  p {
+    margin: 0 0 1em;
+  }
+
+  a>code,
+  figcaption>code,
+  li>code,
+  p>code,
+  td>code {
+    background: rgba(175, 184, 193, 0.2);
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    padding: 0.15em 0;
+    vertical-align: middle;
+  }
+
+  div.highlighter-rouge,
+  figure.highlight {  
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin: 0 0 $--content-size;
   }
 
   .sidebar__right {
+    li {
+      font-size: 1em;
+    }
+    
     .nav__title {
       margin: 0;
 
@@ -69,22 +102,5 @@ html {
         display: none;
       }
     }
-
-    li {
-      font-size: 1em;
-    }
   }
-
-  p > code, a > code, li > code, figcaption > code, td > code {
-    background: rgba(175, 184, 193, 0.2);
-    font-size: 0.7rem;
-    font-size: 0.9em;
-    padding: 0.15em 0;
-  }
-  
-  div.highlighter-rouge, figure.highlight {
-    font-size: 0.7rem;
-    line-height: 1.5;
-    margin: 0 0 0.85rem;
-  }  
 }
