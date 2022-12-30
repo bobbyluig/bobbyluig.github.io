@@ -5,12 +5,12 @@ baseurl: ""
 url: "https://www.lujingcen.com"
 repository: "bobbyluig/bobbyluig.github.io"
 timezone: "Etc/UTC"
+locale: "en-US"
 
 theme: minimal-mistakes-jekyll
 minimal_mistakes_skin: default
 plugins:
   - jekyll-feed
-  - jekyll-last-modified-at
 
 search: true
 search_full_content: true

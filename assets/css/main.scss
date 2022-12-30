@@ -31,6 +31,10 @@ html {
   }
 }
 
+body {
+  overflow-y: scroll;
+}
+
 .page__title+.page__meta,
 .page__title+.comment__date {
   margin-top: calc(-#{$--content-size-rem} / 2);
@@ -107,5 +111,15 @@ html {
         display: none;
       }
     }
+  }
+}
+
+.search-content {
+  .search-content__form {
+    padding-left: 0;
+  }
+
+  .search-input {
+    font-size: $h-size-1;
   }
 }
