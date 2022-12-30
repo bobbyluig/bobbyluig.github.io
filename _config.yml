@@ -4,6 +4,7 @@ description: A place where I document my learnings.
 baseurl: ""
 url: "https://www.lujingcen.com"
 repository: "bobbyluig/bobbyluig.github.io"
+timezone: "Etc/UTC"
 
 theme: minimal-mistakes-jekyll
 minimal_mistakes_skin: default

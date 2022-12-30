@@ -1,7 +1,7 @@
 ---
 layout: single
 title: "Adventures with Aurora (Part 2)"
-date: 2022-12-29
+date: 2022-12-30
 toc: true
 mathjax: true
 ---
