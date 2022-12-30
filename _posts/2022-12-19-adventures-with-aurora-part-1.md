@@ -3,6 +3,7 @@ layout: single
 title: "Adventures with Aurora (Part 1)"
 date: 2022-12-19
 toc: true
+mathjax: true
 ---
 
 I have been battling with an Aurora MySQL database at work for the past few months. As a result, I learned a lot about the internals of MySQL and how to debug database-related issues. In this three-part series, I wanted to share some of the challenges that we encountered and how we solved them.
@@ -66,42 +67,42 @@ We checked out [MySQL 5.6.10](https://github.com/mysql/mysql-server/releases/tag
 
 ```cpp
 int MYSQL_BIN_LOG::ordered_commit(...) {
-  // (1) Flush stage.
-  if (change_stage(..., NULL, &LOCK_log)) {
-    finish_commit(thd);
-  }
-  process_flush_stage_queue(...);
+	// (1) Flush stage.
+	if (change_stage(..., NULL, &LOCK_log)) {
+		finish_commit(thd);
+	}
+	process_flush_stage_queue(...);
 
-  // (2) Sync stage.
-  if (change_stage(..., &LOCK_log, &LOCK_sync)) {
-    finish_commit(thd);
-  }
-  sync_binlog_file(...);
+	// (2) Sync stage.
+	if (change_stage(..., &LOCK_log, &LOCK_sync)) {
+		finish_commit(thd);
+	}
+	sync_binlog_file(...);
 
-  // (3) Commit stage.
-  if (opt_binlog_order_commits) {
-    if (change_stage(..., &LOCK_sync, &LOCK_commit)) {
-      finish_commit(thd);
-    }
-    process_commit_stage_queue(...);
-    pthread_mutex_unlock(&LOCK_commit);
-  }
-  else {
-    pthread_mutex_unlock(&LOCK_sync);
-  }
+	// (3) Commit stage.
+	if (opt_binlog_order_commits) {
+		if (change_stage(..., &LOCK_sync, &LOCK_commit)) {
+			finish_commit(thd);
+		}
+		process_commit_stage_queue(...);
+		pthread_mutex_unlock(&LOCK_commit);
+	}
+	else {
+		pthread_mutex_unlock(&LOCK_sync);
+	}
 
-  // Signal all follower threads that are waiting.
-  stage_manager.signal_done(...);
+	// Signal all follower threads that are waiting.
+	stage_manager.signal_done(...);
 
-  // Finish our own commit.
-  finish_commit(thd);
+	// Finish our own commit.
+	finish_commit(thd);
 
-  // Perform a binary log rotation if necessary.
-  if (do_rotate) {
-    pthread_mutex_lock(&LOCK_log);
-    rotate(...);
-    pthread_mutex_unlock(&LOCK_log);
-  }
+	// Perform a binary log rotation if necessary.
+	if (do_rotate) {
+		pthread_mutex_lock(&LOCK_log);
+		rotate(...);
+		pthread_mutex_unlock(&LOCK_log);
+	}
 }
 ```
 
@@ -109,13 +110,13 @@ In each stage, the leader releases the lock for the previous stage, acquires the
 
 ```cpp
 int MYSQL_BIN_LOG::finish_commit(...) {
-  // Check if the transaction is already committed.
-  if (thd->transaction.flags.commit_low) {
-    ha_commit_low(thd, all);
-    if (thd->transaction.flags.xid_written) {
-      dec_prep_xids();
-    }
-  }
+	// Check if the transaction is already committed.
+	if (thd->transaction.flags.commit_low) {
+		ha_commit_low(thd, all);
+		if (thd->transaction.flags.xid_written) {
+			dec_prep_xids();
+		}
+	}
 }
 ```
 
@@ -129,18 +130,18 @@ After the leader commits, MySQL may need to perform a binary log rotation if the
 
 ```cpp
 int MYSQL_BIN_LOG::new_file_impl(...) {
-  // (1) `LOG_lock` is already acquired by the caller.
+	// (1) `LOG_lock` is already acquired by the caller.
 
-  // (2) If there are prepared transactions, wait on the condition variable.
-  pthread_mutex_lock(&LOCK_commit);
-  while (get_prep_xids() > 0) {
-    pthread_cond_wait(&m_prep_xids_cond, &LOCK_commit);
-  }
-  
-  // (3) Acquire `LOG_index`.
-  pthread_mutex_lock(&LOCK_index);
+	// (2) If there are prepared transactions, wait on the condition variable.
+	pthread_mutex_lock(&LOCK_commit);
+	while (get_prep_xids() > 0) {
+		pthread_cond_wait(&m_prep_xids_cond, &LOCK_commit);
+	}
+	
+	// (3) Acquire `LOG_index`.
+	pthread_mutex_lock(&LOCK_index);
 
-  // [snip]
+	// [snip]
 }
 ```
 
@@ -148,18 +149,18 @@ Note that a transaction enters the prepared state in the flush stage and exits t
 
 ```c
 void inc_prep_xids() {
-  my_atomic_add32(&m_prep_xids, 1);
+	my_atomic_add32(&m_prep_xids, 1);
 }
 
 void dec_prep_xids() {
-  int32_t result = my_atomic_add32(&m_prep_xids, -1);
-  if (result == 1) {
-    pthread_cond_signal(&m_prep_xids_cond);
-  }
+	int32_t result = my_atomic_add32(&m_prep_xids, -1);
+	if (result == 1) {
+		pthread_cond_signal(&m_prep_xids_cond);
+	}
 }
 
 int32_t get_prep_xids() {
-  return my_atomic_load32(&m_prep_xids);
+	return my_atomic_load32(&m_prep_xids);
 }
 ```
 
@@ -169,22 +170,22 @@ If there are no threads waiting for the signal when `pthread_cond_signal` is cal
 
 We had a hypothesis that the bug can only be triggered during a binary log rotation. That would explain why the deadlock took many hours to manifest even though we had a highly concurrent workload. Furthermore, we believed that the deadlock occurred somewhere in the `ordered_commit` function because application metrics indicated that write transactions were blocked on the `COMMIT` statement.
 
-Given this, we were able to come up with a thread ordering that triggered a deadlock and matches the exact behavior that we observed. Consider three transactions `T1` through `T3` that are being processed by different threads. Assume for simplicity that there are no other transactions or database operations happening during this time.
+Given this, we were able to come up with a thread ordering that triggered a deadlock and matches the exact behavior that we observed. Consider three transactions $$T_0$$ through $$T_2$$ that are being processed by different threads. Assume for simplicity that there are no other transactions or database operations happening during this time.
 
-1. `T1` and `T2` commit around the same time.
-2. `T1` enters the flush stage first and becomes the leader.
-3. `T2` also enters the flush stage but becomes a follower.
-4. `T1` gets to the commit stage and sees that `opt_binlog_order_commits` is false. It releases `LOCK_sync` and signals to `T2` that it is done.
-5. `T1` runs `finish_commit`. Because the commit stage was skipped, `T1` runs `ha_commit_low` to commit to the storage engine. `T1` also calls `dec_prep_xids`. After this, there is still one prepared transaction because `T2` has not committed yet.
-6. `T1` notices that it needs to perform a binary log rotation. It grabs `LOCK_log` and `LOCK_commit`. `T1` checks for prepared transactions using `get_prep_xids` and sees that there is one. At this point, `T1` gets preempted.
-7. `T2` runs `finish_commit`. It eventually also calls `dec_prep_xids`. Because it was the last transaction to commit, it signals `m_prep_xids_cond` to wake a waiting thread. Unfortunately, `T1` has not yet waited for the condition variable.
-8. `T1` now atomically releases `LOCK_commit` and waits for `m_prep_xids_cond`. However, the wake-up has been lost, so `T1` will wait forever.
-9. `T3` is now ready to commit. However, it is not able to grab `LOCK_log` because `T1` is holding it. A deadlock has occurred.
+1. $$T_0$$ and $$T_1$$ commit around the same time.
+2. $$T_0$$ enters the flush stage first and becomes the leader.
+3. $$T_1$$ also enters the flush stage but becomes a follower.
+4. $$T_0$$ gets to the commit stage and sees that `opt_binlog_order_commits` is false. It releases `LOCK_sync` and signals to $$T_1$$ that it is done.
+5. $$T_0$$ runs `finish_commit`. Because the commit stage was skipped, $$T_0$$ runs `ha_commit_low` to commit to the storage engine. $$T_0$$ also calls `dec_prep_xids`. After this, there is still one prepared transaction because $$T_1$$ has not committed yet.
+6. $$T_0$$ notices that it needs to perform a binary log rotation. It grabs `LOCK_log` and `LOCK_commit`. $$T_0$$ checks for prepared transactions using `get_prep_xids` and sees that there is one. At this point, $$T_0$$ gets preempted.
+7. $$T_1$$ runs `finish_commit`. It eventually also calls `dec_prep_xids`. Because it was the last transaction to commit, it signals `m_prep_xids_cond` to wake a waiting thread. Unfortunately, $$T_0$$ has not yet waited for the condition variable.
+8. $$T_0$$ atomically releases `LOCK_commit` and waits for `m_prep_xids_cond`. However, the wake-up has been lost, so $$T_0$$ will wait forever.
+9. $$T_2$$ is now ready to commit. However, it is not able to grab `LOCK_log` because $$T_0$$ is holding it. A deadlock has occurred.
 
 Note that this is not possible if `opt_binlog_order_commits` is true because the leader would have to first acquire `LOCK_commit` before calling `dec_prep_xids` for each of the transactions in its group. This highlights the importance of guarding condition writes with the same lock that is being used to wait on the condition variable. The bug was eventually fixed by this [commit](https://github.com/mysql/mysql-server/commit/e9fea31), which introduces a new lock to guard reads and writes of `m_prep_xids`.
 
 ### Bug Replication
-          
+
 We were not satisfied with only a theoretical understanding of the deadlock bug. After all, we needed to make sure that this incident would not occur again. The challenge with replicating concurrency bugs is that they may only occur in very specific scenarios. In this case, there had to be a binary log rotation, and that only happened once or twice per hour in our database. We thought about decreasing the maximum binary log size, but that was not possible in Aurora. Fortunately, we stumbled upon the fact that we can manually trigger binary log rotations through a SQL command.
 
 ```sql

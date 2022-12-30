@@ -9,6 +9,7 @@ theme: minimal-mistakes-jekyll
 minimal_mistakes_skin: default
 plugins:
   - jekyll-feed
+  - jekyll-last-modified-at
 
 search: true
 search_full_content: true
@@ -27,6 +28,7 @@ defaults:
       layout: single
       read_time: true
       comments: true
+      show_date: true
       share: false
       related: false
       toc_label: "Contents"

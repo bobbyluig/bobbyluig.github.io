@@ -7,4 +7,5 @@ gem "webrick", "~> 1.7"
 
 group :jekyll_plugins do
   gem "jekyll-feed", "~> 0.15"
+  gem "jekyll-last-modified-at", "~> 1.1"
 end
