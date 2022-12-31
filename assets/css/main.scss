@@ -9,6 +9,9 @@ $serif: 'Roboto Slab', serif;
 $sans-serif: 'Roboto', sans-serif;
 $monospace: 'Inconsolata', monospace;
 
+$global-transition: none;
+$intro-transition: none;
+
 @import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}"; // skin
 @import "minimal-mistakes"; // main partials
 
@@ -121,5 +124,38 @@ body {
 
   .search-input {
     font-size: $h-size-1;
+  }
+}
+
+.author__avatar {
+  vertical-align: middle;
+}
+
+.author__bio {
+  margin-top: 0.25em;
+
+  @include breakpoint($large) {
+    margin-top: 0.5em;
+    margin-bottom: 1em;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.author__urls {
+  &:after {
+    left: auto;
+    right: 1em;
+  }
+
+  &:before {
+    left: auto;
+    right: 1em;
+  }
+
+  li:last-child {
+    margin-bottom: 0;
   }
 }
