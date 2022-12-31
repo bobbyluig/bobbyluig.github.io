@@ -9,6 +9,9 @@ $serif: 'Roboto Slab', serif;
 $sans-serif: 'Roboto', sans-serif;
 $monospace: 'Inconsolata', monospace;
 
+$global-transition: none;
+$intro-transition: intro 0.3s both;
+
 @import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}"; // skin
 @import "minimal-mistakes"; // main partials
 
@@ -154,5 +157,18 @@ body {
 
   li:last-child {
     margin-bottom: 0;
+  }
+}
+
+.greedy-nav {
+  @include breakpoint(max-width $small) {
+    .site-title {
+      flex: 1 0 auto;
+    }
+
+    .visible-links {
+      flex: 0 1 auto;
+      width: 0;
+    }
   }
 }
