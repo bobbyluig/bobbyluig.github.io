@@ -12,10 +12,10 @@ minimal_mistakes_skin: default
 plugins:
   - jekyll-feed
 
+permalink: /blog/:year/:month/:day/:slug/
 search: true
 search_full_content: true
-
-permalink: /blog/:year/:month/:day/:slug/
+words_per_minute: 150
 
 defaults:
   - scope:
