@@ -11,11 +11,23 @@ theme: minimal-mistakes-jekyll
 minimal_mistakes_skin: default
 plugins:
   - jekyll-feed
+  - jekyll-paginate-v2
+
+kramdown:
+  auto_id_prefix: "header-"
 
 permalink: /blog/:year/:month/:day/:slug/
 search: true
 search_full_content: true
 words_per_minute: 150
+
+pagination:
+  enabled: true
+  per_page: 5
+  permalink: "/page/:num/"
+  sort_field: "date"
+  sort_reverse: true
+  title: ":title"
 
 defaults:
   - scope:

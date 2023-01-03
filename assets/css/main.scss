@@ -118,12 +118,22 @@ body {
 }
 
 .search-content {
+  .archive__item {
+    margin-bottom: 1rem;
+  }
+  
   .search-content__form {
+    margin: 0;
     padding-left: 0;
   }
 
   .search-input {
     font-size: $h-size-1;
+  }
+
+  .results__found {
+    margin-bottom: 1rem;
+    margin-top: 0;
   }
 }
 
@@ -171,4 +181,42 @@ body {
       width: 0;
     }
   }
+}
+
+.archive__item-excerpt {
+  margin-bottom: 1rem;
+}
+
+.list__item .page__meta,
+.list__item .comment__date {
+  margin: 0 0 0.25rem;
+}
+
+.taxonomy__index {
+  margin: 1rem 0 1.5rem;
+}
+
+.taxonomy__section {
+  margin-bottom: 1em;
+  margin-top: 1em;
+}
+
+.taxonomy__section + .taxonomy__section {
+  margin-top: 1em;
+}
+
+.page__meta {
+  margin-top: 0;
+
+  > *:first-child {
+    margin-top: 2em;
+  }
+}
+
+.archive {
+  margin-bottom: 0;
+}
+
+.archive__item-title {
+  margin-top: 0;
 }
