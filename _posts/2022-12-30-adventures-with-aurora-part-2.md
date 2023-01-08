@@ -2,7 +2,7 @@
 layout: single
 title: "Adventures with Aurora (Part 2)"
 date: 2022-12-30
-last_modified_at: 2022-12-30
+last_modified_at: 2023-01-08
 toc: true
 mathjax: true
 ---
@@ -105,7 +105,7 @@ type (g *GroupCommitHandler) WithTx(
 
 // NewGroupCommitHandler creates a group commit handler from a underlying
 // database.
-func NewGroupCommitHandler(db Database, ...) Database {
+func NewGroupCommitHandler(db Database, /*...*/) Database {
 	return &GroupCommitHandler{
 		// [snip]
 	}

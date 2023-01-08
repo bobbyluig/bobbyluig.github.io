@@ -58,11 +58,11 @@ It was time to pull out the MySQL debugging hat once again. Given the intermitte
 The first step in understanding how these full scans manifested was to look at how MySQL estimates the cost of a query. Given that our query used equality ranges, we tracked down the function responsible for estimating the number of rows that will be scanned. A simplified version of the function is shown below.
 
 ```cpp
-uint64_t handler::multi_range_read_info_const(...) {
+uint64_t handler::multi_range_read_info_const(/*...*/) {
 	int64_t total_rows = 0;
 	
 	// Go through each equality range.
-	while (...) {
+	while (/*...*/) {
 		if ((range.range_flag & UNIQUE_RANGE) && 
 				!(range.range_flag & NULL_RANGE)) {
 			// Index is unique. There is at most one row.
@@ -78,7 +78,7 @@ uint64_t handler::multi_range_read_info_const(...) {
 		}
 		else {
 			// Perform index dive.
-			rows = this->records_in_range(...);
+			rows = this->records_in_range(/*...*/);
 		}
 		total_rows += rows;
 	}
@@ -90,7 +90,7 @@ uint64_t handler::multi_range_read_info_const(...) {
 We were performing an `IN` query on a composite primary key index and only using the first part of the key (similar to the example table shown before). Therefore, the index was not unique. From the implementation, we can see that the row estimate depended on whether the optimizer chose to perform an index dive or to use index statistics.
 
 ```cpp
-int ha_innobase::info_low(uint flag, ...) {
+int ha_innobase::info_low(uint flag, /*...*/) {
 	// [snip]
 
 	if (flag & HA_STATUS_CONST) {
@@ -108,7 +108,7 @@ int ha_innobase::info_low(uint flag, ...) {
 	// [snip]
 }
 
-uint64_t innodb_rec_per_key(...) {
+uint64_t innodb_rec_per_key(/*...*/) {
 	uint64_t n_diff = index->stat_n_diff_key_vals[i];
 
 	if (n_diff == 0) {
@@ -126,7 +126,7 @@ Index statistics relies on the `rec_per_key` value. The above code is a simplifi
 Table statistics need to be updated occasionally so that the query optimizer can generate good plans. In MySQL, this happens automatically when a table undergoes changes to more than 10% of its rows ([source](https://dev.mysql.com/doc/refman/5.6/en/innodb-persistent-stats.html)). Let's look at the functions responsible for updating table statistics.
 
 ```cpp
-dberr_t dict_stats_update_persistent(...) {
+dberr_t dict_stats_update_persistent(/*...*/) {
 	// Analyze clustered index first.
 	dict_index_t* index = dict_table_get_first_index(table);
 	dict_stats_analyze_index(index);
@@ -135,7 +135,7 @@ dberr_t dict_stats_update_persistent(...) {
 	// [snip]
 }
 
-void dict_stats_analyze_index(...) {
+void dict_stats_analyze_index(/*...*/) {
 	// Empty the index first.
 	dict_stats_empty_index(index);
 	
@@ -147,8 +147,8 @@ void dict_stats_analyze_index(...) {
 	// [snip]
 }
 
-void dict_stats_empty_index(...) {
-	for (...) {
+void dict_stats_empty_index(/*...*/) {
+	for (/*...*/) {
 		index->stat_n_diff_key_vals[i] = 0;
 		index->stat_n_sample_sizes[i] = 1;
 		index->stat_n_non_null_key_vals[i] = 0;
@@ -177,7 +177,7 @@ Note that if the query optimizer decided to use index dives instead, it would ge
 As with the previous MySQL bug that we discovered, we needed to replicate this bug in our load testing environment to gain confidence of the root cause and to verify that our mitigations worked. Fortunately, there is a way to force the database to update table statistics.
 
 ```sql
-ANALYZE TABLE ...;
+ANALYZE TABLE /*...*/;
 ```
 
 By repeatedly analyzing the table, we were able to force the database to update index statistics more frequently. Then, all we had to do was run the problematic `SELECT` query at high rate. We were able to replicate the full scan bug consistently in only a few minutes. However, we now needed a way to make sure that our existing queries never performed a full scan even in the presence of this bug. Some research led us to [index hints](https://dev.mysql.com/doc/refman/5.6/en/index-hints.html), which were a way to influence MySQL's query plans.

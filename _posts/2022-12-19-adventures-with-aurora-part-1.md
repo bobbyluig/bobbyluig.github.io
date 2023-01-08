@@ -2,7 +2,7 @@
 layout: single
 title: "Adventures with Aurora (Part 1)"
 date: 2022-12-19
-last_modified_at: 2022-12-30
+last_modified_at: 2023-01-08
 toc: true
 mathjax: true
 ---
@@ -67,25 +67,25 @@ Clearly, there was some kind of deadlock within the database itself, and it was 
 We checked out [MySQL 5.6.10](https://github.com/mysql/mysql-server/releases/tag/mysql-5.6.10), which was close enough to what 1.x Aurora MySQL was using. From a full code search, there was only one place where `binlog_order_commits` was used. A simplified version of the function is shown below. For the full implementation, refer to the [code](https://github.com/mysql/mysql-server/blob/91773b1f65de78924e0cd2b30009d44f64f9dee9/sql/binlog.cc#L6301).
 
 ```cpp
-int MYSQL_BIN_LOG::ordered_commit(...) {
+int MYSQL_BIN_LOG::ordered_commit(/*...*/) {
 	// (1) Flush stage.
-	if (change_stage(..., NULL, &LOCK_log)) {
+	if (change_stage(/*...*/, NULL, &LOCK_log)) {
 		finish_commit(thd);
 	}
-	process_flush_stage_queue(...);
+	process_flush_stage_queue(/*...*/);
 
 	// (2) Sync stage.
-	if (change_stage(..., &LOCK_log, &LOCK_sync)) {
+	if (change_stage(/*...*/, &LOCK_log, &LOCK_sync)) {
 		finish_commit(thd);
 	}
-	sync_binlog_file(...);
+	sync_binlog_file(/*...*/);
 
 	// (3) Commit stage.
 	if (opt_binlog_order_commits) {
-		if (change_stage(..., &LOCK_sync, &LOCK_commit)) {
+		if (change_stage(/*...*/, &LOCK_sync, &LOCK_commit)) {
 			finish_commit(thd);
 		}
-		process_commit_stage_queue(...);
+		process_commit_stage_queue(/*...*/);
 		pthread_mutex_unlock(&LOCK_commit);
 	}
 	else {
@@ -93,7 +93,7 @@ int MYSQL_BIN_LOG::ordered_commit(...) {
 	}
 
 	// Signal all follower threads that are waiting.
-	stage_manager.signal_done(...);
+	stage_manager.signal_done(/*...*/);
 
 	// Finish our own commit.
 	finish_commit(thd);
@@ -101,7 +101,7 @@ int MYSQL_BIN_LOG::ordered_commit(...) {
 	// Perform a binary log rotation if necessary.
 	if (do_rotate) {
 		pthread_mutex_lock(&LOCK_log);
-		rotate(...);
+		rotate(/*...*/);
 		pthread_mutex_unlock(&LOCK_log);
 	}
 }
@@ -110,7 +110,7 @@ int MYSQL_BIN_LOG::ordered_commit(...) {
 In each stage, the leader releases the lock for the previous stage, acquires the lock for the current stage, and performs some work. If the `change_stage` call fails, then the thread is a follower. When `opt_binlog_order_commits` is false, the leader simply releases the lock instead of processing the commit stage queue. Each thread is then individually responsible for committing when they run `finish_commit`.
 
 ```cpp
-int MYSQL_BIN_LOG::finish_commit(...) {
+int MYSQL_BIN_LOG::finish_commit(/*...*/) {
 	// Check if the transaction is already committed.
 	if (thd->transaction.flags.commit_low) {
 		ha_commit_low(thd, all);
@@ -130,7 +130,7 @@ After the leader commits, MySQL may need to perform a binary log rotation if the
 3. `LOCK_index`: this prevents other binary log index operations from happening at the same time. MySQL maintains a binary log index file with the names of binary log files.
 
 ```cpp
-int MYSQL_BIN_LOG::new_file_impl(...) {
+int MYSQL_BIN_LOG::new_file_impl(/*...*/) {
 	// (1) `LOG_lock` is already acquired by the caller.
 
 	// (2) If there are prepared transactions, wait on the condition variable.
