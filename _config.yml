@@ -13,8 +13,13 @@ plugins:
   - jekyll-feed
   - jekyll-paginate-v2
 
+sass:
+  style: compressed
+
 kramdown:
   auto_id_prefix: "header-"
+  syntax_highlighter_opts:
+    disable : true
 
 permalink: /blog/:year/:month/:day/:slug/
 search: true
@@ -45,6 +50,7 @@ defaults:
       share: false
       related: false
       toc_label: "Contents"
+      type: posts
 
 author:
   name: "Lujing Cen"
