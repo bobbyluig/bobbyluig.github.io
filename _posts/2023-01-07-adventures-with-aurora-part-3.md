@@ -1,8 +1,8 @@
 ---
 layout: single
 title: "Adventures with Aurora (Part 3)"
-date: 2023-01-03
-last_modified_at: 2023-01-03
+date: 2023-01-07
+last_modified_at: 2023-01-07
 toc: true
 ---
 
@@ -28,7 +28,7 @@ The optimizer would like an accurate estimate of how many rows will be scanned i
 
 In MySQL 5.6, the default threshold for index dives is 10. That means if there are less than 10 equality ranges in an expression, the optimizer will perform index dives. Otherwise, it will use index statistics. The threshold can be set using the  `eq_range_index_dive_limit` database parameter.
 
-Let's look at how the optimizer deals with various datasets. In the table below, we show how the number of rows in the table, the cardinality of the index for `col_0`, and the number of equality ranges in the query affect the query plan. All results are generated using the schema and query shown before. However, the query is expected to return no rows because none of values in the `IN` predicate match any row in the inserted data.
+Let's look at how the optimizer deals with various datasets. In the table below, we show how the number of rows in the table, the cardinality of the index for `col_0`, and the number of equality ranges in the query affect the query plan. All results are generated using the schema and query shown before. However, the query is expected to return no rows because none of the values in the `IN` predicate match any row in the inserted data.
 
 | Table Rows | Index Cardinality | Equality Ranges | Index Used | Row Estimate |
 |:----------:|:-----------------:|:---------------:|:----------:|:------------:|
@@ -49,9 +49,9 @@ For a few weeks, our database hummed along without any issues. After all, many n
 
 An interesting metric change was that `innodb_rows_read.avg` (the number of rows read per second) had spiked by a factor of 10. This indicated that one or more queries were performing a full scan (on a table with more than 2 billion rows). Upon inspecting the running queries, we found that there were more than 40 queries which had been running for half an hour. We quickly killed those queries, which resolved the database degradation.
 
-Of course, we avoided running full scans in our online databases, so we quite confused as to how this happened. The query performing the full scan was a simple `SELECT` query with an `IN` predicate. We ran `EXPLAIN` multiple times and confirmed that the query should have been using the index. Upon closer inspection of the metrics, we noticed that similar full scans had happened intermittently over the past week, although there were not enough concurrent full scans to cause our alerts to fire.
+Of course, we avoided running full scans in our online databases, so we were quite confused as to how this happened. The query performing the full scan was a simple `SELECT` query with an `IN` predicate. We ran `EXPLAIN` multiple times and confirmed that the query should have been using the index. Upon closer inspection of the metrics, we noticed that similar full scans had happened intermittently over the past week, although there were not enough concurrent full scans to cause our alerts to fire.
 
-It was time to pull out the MySQL debugging hat once again. Given the intermittent nature of these full scans and the fact that these queries should have used the index, we suspected it had something to do with the query optimizer and index updates. We scoured for MySQL bugs and stumbled [#82969](https://bugs.mysql.com/bug.php?id=82969), which describes a race conditions associated with the computation of index statistics.
+It was time to pull out the MySQL debugging hat once again. Given the intermittent nature of these full scans and the fact that these queries should have used the index, we suspected it had something to do with the query optimizer and index updates. We scoured for MySQL bugs and stumbled on [#82969](https://bugs.mysql.com/bug.php?id=82969), which describes a race condition associated with the computation of index statistics.
 
 ### Cost Estimation
 
@@ -123,7 +123,7 @@ Index statistics relies on the `rec_per_key` value. The above code is a simplifi
 
 ### Statistics Calculation
 
-Table statistics need to be updated occasionally so that the query optimizer can generate good plans. In MySQL, this happens automatically when a table undergoes changes to more than 10% of its rows [source](https://dev.mysql.com/doc/refman/5.6/en/innodb-persistent-stats.html). Let's look at the functions responsible for updating table statistics.
+Table statistics need to be updated occasionally so that the query optimizer can generate good plans. In MySQL, this happens automatically when a table undergoes changes to more than 10% of its rows ([source](https://dev.mysql.com/doc/refman/5.6/en/innodb-persistent-stats.html)). Let's look at the functions responsible for updating table statistics.
 
 ```cpp
 dberr_t dict_stats_update_persistent(...) {
@@ -164,13 +164,13 @@ When index statistics are updated, all statistics values are first reset. In par
 
 An audit of the queries executed during the incident showed that they all had 10 or more values in the `IN` predicate. This was not a coincidence because it was the exact threshold at which 1.x Aurora would switch from index dives to index statistics. We now describe a race condition that can happen for `SELECT` queries using equality ranges.
 
-1. The database determines that table statistics needs to be updated.
+1. The database determines that table statistics need to be updated.
 2. A background thread runs `dict_stats_analyze_index`, but is preempted before it can actually populate the index statistics.
 3. A transaction running a `SELECT` query is processed and runs `info_low` to get updated table statistics. Because the statistics were reset, `rec_per_key` is set to be the number of rows in the table.
 4. The transaction has an `IN` predicate with 10 or more values. Therefore, the query optimizer uses index statistics. However, it incorrectly determines that the index is not useful at all because it has a very high selectivity value.
 5. The transaction decides to perform a full scan instead.
 
-Note that if the query optimizer decided to use index dives instead, it would get a correct estimate and not perform a full scan. This is consistent with what we observed in our system. Under high concurrency, it is possible for many transactions to see an incorrect value for `rec_per_key` before the background thread is able to populated the index statistics.
+Note that if the query optimizer decided to use index dives instead, it would get a correct estimate and not perform a full scan. This is consistent with what we observed in our system. Under high concurrency, it is possible for many transactions to see an incorrect value for `rec_per_key` before the background thread is able to populate the index statistics.
 
 ### Bug Replication
 
@@ -180,12 +180,12 @@ As with the previous MySQL bug that we discovered, we needed to replicate this b
 ANALYZE TABLE ...;
 ```
 
-By repeated analyzing the table, we were able to force the database to update index statistics more frequently. Then, all we had to do was run the problem `SELECT` query at high rate. We were able to replicate the full scan bug consistently in only a few minutes. However, we now needed a way to make sure that our existing queries never performed a full scan even in the presence of this bug. Some research led us to [index hints](https://dev.mysql.com/doc/refman/5.6/en/index-hints.html), which were a way to influence MySQL's query plans.
+By repeatedly analyzing the table, we were able to force the database to update index statistics more frequently. Then, all we had to do was run the problematic `SELECT` query at high rate. We were able to replicate the full scan bug consistently in only a few minutes. However, we now needed a way to make sure that our existing queries never performed a full scan even in the presence of this bug. Some research led us to [index hints](https://dev.mysql.com/doc/refman/5.6/en/index-hints.html), which were a way to influence MySQL's query plans.
 
-> The `FORCE INDEX` hint acts like `USE INDEX (index_list)`, with the addition that a table scan is assumed to be very expensive. In other words, a table scan is used only if there is no way to use one of the named indexes to find rows in the table.  
+> "The `FORCE INDEX` hint acts like `USE INDEX (index_list)`, with the addition that a table scan is assumed to be very expensive. In other words, a table scan is used only if there is no way to use one of the named indexes to find rows in the table."  
 > — MySQL 5.6 Reference Manual
 
-After adding `FORCE INDEX` to all of our queries that contained `IN` predicates, we verified in our load testing environment that these `SELECT` queries always used the index instead of performing full scans even when table statistics were being updated. However, we're not sure what MySQL fixed this bug.
+After adding `FORCE INDEX` to all of our queries that contained `IN` predicates, we verified in our load testing environment that these `SELECT` queries always used the index instead of performing full scans even when table statistics were being updated. However, we're not sure when MySQL fixed this bug.
 
 ## Data Store Migration
 
@@ -195,7 +195,7 @@ A major contributor to all of our database problems was that we were pushing our
 
 It turned out that a significant part of our database load was coming from a use case that stored transient metadata. We had a scheduling system that processed around 1,000 recurring tasks per second. For each task, it would write some metadata to a row, perform the task, and then clear the metadata from the row once it persisted the task's results. The system needed the metadata to make various scheduling decisions.
 
-This workload was more appropriate for Redis. SQL databases, and especially Aurora, are not designed for high-throughput update workloads. Redis, on the other hand, excels at storing transient data that needs to updated and read frequently. Therefore, we decided to migrate the metadata out of Aurora and into Redis.
+This workload was more appropriate for Redis. SQL databases, and especially Aurora, are not designed for high-throughput update workloads. Redis, on the other hand, excels at storing transient data that needs to be updated and read frequently. Therefore, we decided to migrate the metadata out of Aurora and into Redis.
 
 ### Unexpected Results
 
@@ -205,7 +205,7 @@ After a bit of investigation, we discovered two contributors to the unexpected l
 
 The second was that one of the metadata columns had a secondary index defined. This index was no longer used, but was left because removing the index would require locking the entire table. Vanilla MySQL optimizes secondary index writes using the [change buffer](https://dev.mysql.com/doc/refman/5.6/en/innodb-change-buffer.html), which caches changes to secondary indexes in memory.
 
-> Unlike clustered indexes, secondary indexes are usually nonunique, and inserts into secondary indexes happen in a relatively random order. Similarly, deletes and updates may affect secondary index pages that are not adjacently located in an index tree. Merging cached changes at a later time, when affected pages are read into the buffer pool by other operations, avoids substantial random access I/O that would be required to read secondary index pages into the buffer pool from disk.
+> "Unlike clustered indexes, secondary indexes are usually nonunique, and inserts into secondary indexes happen in a relatively random order. Similarly, deletes and updates may affect secondary index pages that are not adjacently located in an index tree. Merging cached changes at a later time, when affected pages are read into the buffer pool by other operations, avoids substantial random access I/O that would be required to read secondary index pages into the buffer pool from disk."
 > — MySQL 5.6 Reference Manual
 
 Unfortunately, the shared storage architecture of Aurora means that the change buffer had to be disabled. There is no way to cache changes to secondary indexes on the writer since the readers can't directly access the writer's buffer pool. This meant that by removing secondary index updates, we were able to substantially reduce I/O operations.
