@@ -1,8 +1,8 @@
 ---
 layout: single
 title: "Adventures with Aurora (Part 3)"
-date: 2023-01-07
-last_modified_at: 2023-01-07
+date: 2023-01-08
+last_modified_at: 2023-01-08
 toc: true
 ---
 
