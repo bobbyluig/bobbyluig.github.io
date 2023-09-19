@@ -1,9 +1,7 @@
 ---
-layout: single
+layout: post
 title: "Adventures with Aurora (Part 3)"
 date: 2023-01-08
-last_modified_at: 2023-01-08
-toc: true
 ---
 
 We had successfully mitigated our database's I/O bottleneck by batching high throughput transactions in the application layer. However, Aurora had one last trick up its sleeve. Meanwhile, an upcoming project gave us the opportunity to implement a long-term fix for our database load issues.
@@ -64,15 +62,15 @@ uint64_t handler::multi_range_read_info_const(/*...*/) {
 	// Go through each equality range.
 	while (/*...*/) {
 		if ((range.range_flag & UNIQUE_RANGE) && 
-				!(range.range_flag & NULL_RANGE)) {
+			!(range.range_flag & NULL_RANGE)) {
 			// Index is unique. There is at most one row.
 			rows = 1;
 		}
 		else if ((range.range_flag & EQ_RANGE) &&
-						 (range.range_flag & USE_INDEX_STATISTICS) &&
-						 (keyparts_used = my_count_bits(range.start_key.keypart_map)) &&
-						 table->key_info[keyno].rec_per_key[keyparts_used - 1] &&
-						 !(range.range_flag & NULL_RANGE)) {
+				 (range.range_flag & USE_INDEX_STATISTICS) &&
+				 (keyparts_used = my_count_bits(range.start_key.keypart_map)) &&
+				 table->key_info[keyno].rec_per_key[keyparts_used - 1] &&
+				 !(range.range_flag & NULL_RANGE)) {
 			// Estimate using index statistics.
 			rows = table->key_info[keyno].rec_per_key[keyparts_used - 1];
 		}

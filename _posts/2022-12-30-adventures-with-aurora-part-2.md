@@ -1,10 +1,7 @@
 ---
-layout: single
+layout: post
 title: "Adventures with Aurora (Part 2)"
 date: 2022-12-30
-last_modified_at: 2023-01-08
-toc: true
-mathjax: true
 ---
 
 When we left off, we had two failed attempts at resolving Aurora MySQL I/O issues by tuning database parameters. We also managed to stumble on a 10-year-old deadlock bug in MySQL 5.6. Rather than continuing to explore risky database-level changes, we turned our attention to the application.
@@ -85,8 +82,8 @@ We implemented the initial version of group commit in Go, although this techniqu
 // Database is used to interact with an underlying database.
 type Database interface {
 	// WithTx runs a user-defined function within a transaction. If the function
-	// returns without error, the transaction is committed. Otherwise, the
-	// transaction is rolled back. Transient errors may be retried and cause the
+	// returns without error, the transaction is committed. Otherwise, the 
+	// transaction is rolled back. Transient errors may be retried and cause the 
 	// function to be invoked multiple times. 
 	WithTx(ctx context.Context, fn func(ctx context.Context, tx *sql.Tx) error);
 }
@@ -103,8 +100,7 @@ type (g *GroupCommitHandler) WithTx(
 	// [snip]
 }
 
-// NewGroupCommitHandler creates a group commit handler from a underlying
-// database.
+// NewGroupCommitHandler creates a group commit handler from a underlying database.
 func NewGroupCommitHandler(db Database, /*...*/) Database {
 	return &GroupCommitHandler{
 		// [snip]

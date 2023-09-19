@@ -1,97 +1,70 @@
-title: Standard Output
-name: Lujing Cen
-description: A place where I document my learnings.
+# Required for Jekyll.
 baseurl: ""
-url: "https://www.lujingcen.com"
-repository: "bobbyluig/bobbyluig.github.io"
+permalink: "/blog/:year/:month/:day/:slug/"
 timezone: "Etc/UTC"
-locale: "en-US"
+theme: "minima"
+url: "https://www.lujingcen.com"
 
-theme: minimal-mistakes-jekyll
-minimal_mistakes_skin: default
+# Enabled plugins.
 plugins:
-  - jekyll-feed
-  - jekyll-paginate-v2
+  - jekyll-paginate
 
-sass:
-  style: compressed
+# Pagination configuration
+paginate: 5
+paginate_path: "/page/:num/"
 
-kramdown:
-  auto_id_prefix: "header-"
-  syntax_highlighter_opts:
-    disable : true
-
-permalink: /blog/:year/:month/:day/:slug/
-search: true
-search_full_content: true
-words_per_minute: 150
-
-pagination:
-  enabled: true
-  per_page: 5
-  permalink: "/page/:num/"
-  sort_field: "date"
-  sort_reverse: true
-  title: ":title"
-
+# Default front matter.
 defaults:
   - scope:
       path: ""
+      type: "posts"
     values:
-      author_profile: true
-  - scope:
-      path: ""
-      type: posts
-    values:
-      layout: single
-      read_time: true
-      comments: true
-      show_date: true
-      share: false
-      related: false
-      toc_label: "Contents"
-      type: posts
+      type: "posts"
 
+# Sass configuration.
+sass:
+  style: "compressed"
+
+# Kramdown configuration.
+kramdown:
+  auto_id_prefix: "header-"
+  syntax_highlighter_opts:
+    disable: true
+
+# Theme-specific configurations.
 author:
   name: "Lujing Cen"
-  avatar: "/assets/images/bio-photo.jpg"
-  bio: "Software Engineer at Plaid"
-  location: "San Francisco, CA"
-  links:
-    - label: "GitHub"
-      icon: "fab fa-fw fa-github"
-      url: "https://github.com/bobbyluig"
-    - label: "LinkedIn"
-      icon: "fab fa-fw fa-linkedin"
-      url: "https://www.linkedin.com/in/lujing-cen/"
+  email: "lujingcen@gmail.com"
+description: "A place where I document my learnings."
+google_analytics: "G-0N8JV9HFGZ"
+header_pages:
+  - "_pages/about.md"
+minima:
+  social_links:
+    - { platform: "github", user_url: "https://github.com/bobbyluig" }
+    - { platform: "linkedin", user_url: "https://linkedin.com/in/lujing-cen/" }
+show_excerpts: true
+title: "Standard Output"
 
-analytics:
-  provider: "google-gtag"
-  google:
-    tracking_id: "G-0N8JV9HFGZ"
-    anonymize_ip: true
-
-comments:
-  provider: "giscus"
-  giscus:
-    repo_id: "R_kgDOImD8Kg"
-    category_name: "Announcements"
-    category_id: "DIC_kwDOImD8Ks4CTJNJ"
-    discussion_term: "pathname"
-    reactions_enabled: "1"
-    theme: "light"
+# Comments configuration.
+giscus:
+  repo: "bobbyluig/bobbyluig.github.io"
+  repo_id: "R_kgDOImD8Kg"
+  category_name: "Announcements"
+  category_id: "DIC_kwDOImD8Ks4CTJNJ"
+  theme: "light"
 
 include:
   - "_pages"
 
 exclude:
-  - .sass-cache/
-  - .jekyll-cache/
-  - gemfiles/
-  - Gemfile
-  - Gemfile.lock
-  - node_modules/
-  - vendor/bundle/
-  - vendor/cache/
-  - vendor/gems/
-  - vendor/ruby/
+  - ".sass-cache/"
+  - ".jekyll-cache/"
+  - "gemfiles/"
+  - "Gemfile"
+  - "Gemfile.lock"
+  - "node_modules/"
+  - "vendor/bundle/"
+  - "vendor/cache/"
+  - "vendor/gems/"
+  - "vendor/ruby/"

@@ -1,11 +1,8 @@
 source "https://rubygems.org"
 
-gem "jekyll", "~> 4.3.1"
-gem "minimal-mistakes-jekyll", "~> 4.24.0"
-gem "rouge", "~> 4.0.1"
-gem "webrick", "~> 1.7"
+gem "jekyll", "~> 4.3.2"
+gem "minima", :github => 'jekyll/minima', :ref => '2863624b903b17f838d6ce8d2f77900fa9d3c864'
 
 group :jekyll_plugins do
-  gem "jekyll-feed", "~> 0.15"
-  gem "jekyll-paginate-v2", "~> 3.0"
+  gem "jekyll-paginate"
 end
