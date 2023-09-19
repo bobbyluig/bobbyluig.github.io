@@ -34,7 +34,7 @@ The reason for this is that Aurora employs asynchronous commits along with batch
 > "In Aurora, transaction commits are completed asynchronously. When a client commits a transaction, the thread handling the commit request sets the transaction aside by recording its "commit LSN" as part of a separate list of transactions waiting on commit and moves on to perform other work."  
 > — Amazon Aurora: Design Considerations for High Throughput Cloud-Native Relational Databases
 
-> "Although actual log records vary in size, writes to an Aurora cluster are sent in 4 KB units when possible. If the writer has several log records at the same time that are less than 4 KB in size, they’re batched together into a single write operation.... Log records greater than 4 KB are split into 4 KB units."  
+> "Although actual log records vary in size, writes to an Aurora cluster are sent in 4 KB units when possible. If the writer has several log records at the same time that are less than 4 KB in size, they’re batched together into a single write operation. [...] Log records greater than 4 KB are split into 4 KB units."  
 > — Planning I/O in Amazon Aurora
 
 As a result, flushing to disk once per second does not necessarily reduce the number of I/O operations because Aurora is already able to take advantage of highly concurrent write workloads by batching log record writes between transactions. Although relaxed durability might allow transactions to commit without waiting for log flushes, the overall throughput of write transactions is still limited by the IOPS of Aurora's storage.

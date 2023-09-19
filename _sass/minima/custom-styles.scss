@@ -10,6 +10,11 @@ hr {
   border-top: 1px solid $border-color-01;
 }
 
+blockquote {
+  @include relative-font-size(1);
+  font-style: normal;
+}
+
 .pagination {
   margin-bottom: 15px;
 
