@@ -20,6 +20,11 @@ table {
   margin-bottom: $spacing-unit * .5;
 }
 
+mjx-container {
+  overflow-x: auto;
+  margin: $spacing-unit * .5 0;
+}
+
 .pagination {
   margin-bottom: $spacing-unit * .5;
 
