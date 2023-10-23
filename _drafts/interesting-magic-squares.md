@@ -125,7 +125,9 @@ Now that we know how to generate magic squares, we can focus on what makes a mag
 
 Although all positive magic squares with a magic constant of 33 are trivial, some are more trivial than others. We want to find magic squares that have the minium number of duplicates. In this case, the desired magic squares should have only one number duplicated. We can encode this into the error function by adding in $$(\operatorname{card}(x) - 15)$$.
 
-A second property that makes magic squares interesting is the number of groups that have symmetrical pairs and add up to the magic constant.
+A second property that makes magic squares interesting is the number of groups that have symmetrical pairs and add up to the magic constant. We define symmetry as a reflection across the x-axis, y-axis, or both. Below are three examples groups in the Sagrada Familia magic square that have symmetry of the respective types. Note that by definition, all rows, columns, and major diagonals in any magic square are symmetrical groups.
+
+[^sagrada-familia]
 
 ## References
 
@@ -133,3 +135,4 @@ A second property that makes magic squares interesting is the number of groups t
 [^sallows]: Sallows, Lee (2003). [Letters: The Mathematical Intelligencer](https://link.springer.com/article/10.1007/BF02984856).
 [^hjort]: Hjort, Nils Lid (2019). [The Magic Square of 33](https://www.mn.uio.no/math/english/research/projects/focustat/the-focustat-blog!/gaudisquare.html).
 [^moler]: Moler, Cleve (2012). [Magic Squares, Part 2, Algorithms](https://blogs.mathworks.com/cleve/2012/11/05/magic-squares-part-2-algorithms/).
+[^sagrada-familia]: Sagrada Familia (2018). [The magic square on the Passion façade: keys to understanding it](https://blog.sagradafamilia.org/en/divulgation/the-magic-square-the-passion-facade-keys-to-understanding-it/).
