@@ -11,6 +11,11 @@ hr {
   border-top: 1px solid $border-color-01;
 }
 
+sup {
+  @include relative-font-size(0.75);
+  line-height: 0;
+}
+
 blockquote {
   @include relative-font-size(1);
   font-style: normal;
@@ -22,6 +27,7 @@ table {
 
 mjx-container {
   overflow-x: auto;
+  overflow-y: hidden;
   margin: $spacing-unit * .5 0;
 }
 
