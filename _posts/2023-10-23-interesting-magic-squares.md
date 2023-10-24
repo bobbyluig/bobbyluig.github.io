@@ -125,7 +125,7 @@ Now that we know how to generate magic squares, we can focus on what makes a mag
 
 Although all positive magic squares with a magic constant of 33 are trivial, some are more trivial than others. We want to find magic squares that have the minimum number of duplicates. In this case, the desired magic squares should have only one number duplicated. We can encode this into the error function by adding in $$(\operatorname{card}(x) - 15)$$.
 
-A second property that makes magic squares interesting is the number of groups that have symmetrical pairs and add up to the magic constant. We define symmetry as a reflection across the x-axis, y-axis, or both. Below are three example groups in the Sagrada Familia magic square that have symmetry of the respective types[^sagrada-familia]. Note that by definition, all rows, columns, and major diagonals in any magic square are symmetrical groups.
+A second property that makes magic squares interesting is the number of groups that have symmetrical pairs (including itself) and add up to the magic constant. We define symmetry as a reflection across the x-axis, y-axis, or both. Below are three example groups in the Sagrada Familia magic square that have symmetry of the respective types[^sagrada-familia]. Note that by definition, all rows, columns, and major diagonals in any magic square are symmetrical groups.
 
 $$
 \begin{bmatrix}
@@ -154,21 +154,21 @@ We want to find squares that have a lot of symmetrical groups, but this computat
 
 ## Results
 
-After examining a few million candidate squares, I found some very interesting ones. These are not necessarily the most interesting squares according to our criteria, but they were the best ones that the program produced after a few minutes. Out of curiosity, I also searched for interesting squares without any duplicates but allowing zero as a value. The results are shown below. Interestingly, both squares have 108 symmetrical groups each. For comparison, the magic square on the Sagrada Familia has 94 symmetrical groups.
+After examining a few million candidate squares, I found some very interesting ones. These are not necessarily the most interesting squares according to our criteria, but they were the best ones that the program produced after a few minutes. Out of curiosity, I also searched for interesting squares without any duplicates but allowing zero as a value. The results are shown below. The left and right squares have 55 and 53 symmetrical groups respectively. For comparison, the magic square on the Sagrada Familia has 45 symmetrical groups.
 
 $$
 \begin{bmatrix}
-9 & 13 & 4 & 7 \\
-3 & 8 & 10 & 12 \\
-6 & 1 & 14 & 12 \\
-15 & 11 & 5 & 2 \\
+4 & 6 & 7 & 16 \\
+10 & 9 & 11 & 3 \\
+18 & 5 & 8 & 2 \\
+1 & 13 & 7 & 12 \\
 \end{bmatrix}
 
 \begin{bmatrix}
-5 & 11 & 10 & 7 \\
-0 & 17 & 13 & 3 \\
-16 & 1 & 2 & 14 \\
-12 & 4 & 8 & 9 \\
+17 & 0 & 6 & 10 \\
+2 & 8 & 4 & 19 \\
+9 & 14 & 7 & 3 \\
+5 & 11 & 16 & 1 \\
 \end{bmatrix}
 $$
 

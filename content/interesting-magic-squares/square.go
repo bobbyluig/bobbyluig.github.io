@@ -5,10 +5,10 @@ import (
 	"math"
 	"math/bits"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"gonum.org/v1/gonum/stat/combin"
 )
@@ -131,7 +131,7 @@ func uniqueError(square [16]int) float64 {
 	for _, value := range square {
 		bitSet |= 1 << value
 	}
-	return 16.0 - float64(bits.OnesCount64(bitSet))
+	return 15.0 - float64(bits.OnesCount64(bitSet))
 }
 
 func combinations(square [16]int) int {
@@ -146,8 +146,11 @@ func combinations(square [16]int) int {
 
 func symmetryPairs(square [16]int) int {
 	sliceToKey := func(slice []int) string {
+		copySlice := make([]int, len(slice))
+		copy(copySlice, slice)
+		sort.Ints(copySlice)
 		b := make([]string, len(slice))
-		for i, v := range slice {
+		for i, v := range copySlice {
 			b[i] = strconv.Itoa(v)
 		}
 		return strings.Join(b, ",")
@@ -234,7 +237,7 @@ func makeRange(min int, max int) []int {
 }
 
 func randomValue(r *rand.Rand) int {
-	return r.Intn(17)
+	return 1 + r.Intn(30)
 }
 
 func randomSquare(r *rand.Rand) [16]int {
@@ -245,8 +248,7 @@ func randomSquare(r *rand.Rand) [16]int {
 	return square
 }
 
-func bestSquare() [16]int {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+func bestSquare(r *rand.Rand) [16]int {
 	square := randomSquare(r)
 	minError := math.Inf(1)
 
@@ -284,8 +286,9 @@ func bestSquare() [16]int {
 }
 
 func findSquare(mu *sync.Mutex, best *int) {
+	r := rand.New(rand.NewSource(rand.Int63()))
 	for i := 0; i < 1000000; i++ {
-		square := bestSquare()
+		square := bestSquare(r)
 		if e := totalError(square); e == 0 {
 			sN := symmetryPairs(square)
 			mu.Lock()
@@ -308,7 +311,7 @@ func main() {
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
 			findSquare(&mu, &best)
@@ -319,5 +322,5 @@ func main() {
 	wg.Wait()
 }
 
-// 0.000000, 309, 108, [9 13 4 7 3 8 10 12 6 1 14 12 15 11 5 2]
-// 0.000000, 342, 108, [5 11 10 7 0 17 13 3 16 1 2 14 12 4 8 9]
+// 0.000000, 327, 55, [4 6 7 16 10 9 11 3 18 5 8 2 1 13 7 12]
+// 0.000000, 364, 53, [17 0 6 10 2 8 4 19 9 14 7 3 5 11 16 1]
