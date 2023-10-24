@@ -1,10 +1,10 @@
 ---
 layout: post
 title: "Interesting Magic Squares"
-date: 2023-10-22
+date: 2023-10-23
 ---
 
-Earlier this year, I visited Barcelona for the first time and saw the magic square on the Sagrada Familia. Unlike a normal 4×4 magic square, this one has a magic constant of 33 and a total of 310 combinations that add up to the magic constant. I wanted to know if there other magic squares that had even more interesting properties given similar constraints.
+Earlier this year, I visited Barcelona for the first time and saw the magic square on the Sagrada Familia. Unlike a normal 4×4 magic square, this one has a magic constant of 33 and a total of 310 combinations that add up to the magic constant. I wanted to know if there were other magic squares that had even more interesting properties given similar constraints.
 
 ## Trivial and Non-normal
 
@@ -54,7 +54,7 @@ $$
 
 ## Generating Squares
 
-There are $$16!$$ ways to permute distinct numbers in a 4×4 square, although most of them will not satisfy the criteria for a magic square. Hjort outlines a strategy to generate magic squares based on Markov chains by starting with an initial set of numbers, randomly permuting pairs of them, and accepting or rejecting the resulting proposal based on some probabilistic criteria[^hjort].
+There are $$16!$$ ways to permute distinct numbers in a 4×4 square, although most of them will not satisfy the criteria for a magic square. Hjort outlines a strategy to generate magic squares based on Markov chains by starting with an initial set of numbers, randomly permuting pairs of them, and accepting or rejecting the resulting proposals based on some probabilistic criteria[^hjort].
 
 The criteria relies on an error function that approaches zero as the square approaches a desired one (i.e., a square where the rows, columns, and main diagonals sum to the magic constant). We show an example error function $$E(x)$$ below.
 
@@ -81,7 +81,7 @@ A key insight is that at some point, it may no longer be possible to decrease $$
 
 The reason we want to attempt all possible single location perturbations in a random order instead of some fixed order is so that the resulting squares are not biased towards a specific pattern imposed by the ordering. However, materializing the permutations of locations and the permutations of numbers to try for each location is quite wasteful since we do not expect to need all perturbations before finding a better square. 
 
-Instead, we can design an iterator that takes constant time to advance through a permutation and constant time to reset regardless of the size of permuted set. It relies on the Fisher–Yates shuffle subroutine, except it only does one swap every time the iterator is advanced. Resetting the iterator can be done by leaving the partially shuffled array as is, and restarting the pointer at the beginning of the array. An implementation in Go is shown below.
+Instead, we can design an iterator that takes constant time to advance through a permutation and constant time to reset regardless of the size of the permuted set. It relies on the Fisher–Yates shuffle subroutine, except it only does one swap every time the iterator is advanced. Resetting the iterator can be done by leaving the partially shuffled array as is, and restarting the pointer at the beginning of the array. An implementation in Go is shown below.
 
 ```go
 type Permutation[T any] struct {
@@ -123,9 +123,9 @@ func (p *Permutation[T]) Get() T {
 
 Now that we know how to generate magic squares, we can focus on what makes a magic square interesting. This is fairly subjective, but I wanted to focus on two aspects: unique numbers and symmetrical groups.
 
-Although all positive magic squares with a magic constant of 33 are trivial, some are more trivial than others. We want to find magic squares that have the minium number of duplicates. In this case, the desired magic squares should have only one number duplicated. We can encode this into the error function by adding in $$(\operatorname{card}(x) - 15)$$.
+Although all positive magic squares with a magic constant of 33 are trivial, some are more trivial than others. We want to find magic squares that have the minimum number of duplicates. In this case, the desired magic squares should have only one number duplicated. We can encode this into the error function by adding in $$(\operatorname{card}(x) - 15)$$.
 
-A second property that makes magic squares interesting is the number of groups that have symmetrical pairs and add up to the magic constant. We define symmetry as a reflection across the x-axis, y-axis, or both. Below are three examples groups in the Sagrada Familia magic square that have symmetry of the respective types[^sagrada-familia]. Note that by definition, all rows, columns, and major diagonals in any magic square are symmetrical groups.
+A second property that makes magic squares interesting is the number of groups that have symmetrical pairs and add up to the magic constant. We define symmetry as a reflection across the x-axis, y-axis, or both. Below are three example groups in the Sagrada Familia magic square that have symmetry of the respective types[^sagrada-familia]. Note that by definition, all rows, columns, and major diagonals in any magic square are symmetrical groups.
 
 $$
 \begin{bmatrix}
