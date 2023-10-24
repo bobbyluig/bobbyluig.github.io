@@ -77,7 +77,7 @@ func init() {
 		// },
 	}
 
-	for k := 2; k <= 16; k++ {
+	for k := 2; k <= 15; k++ {
 		combinationSlices = append(combinationSlices, combin.Combinations(16, k)...)
 	}
 
@@ -283,34 +283,35 @@ func bestSquare() [16]int {
 	return square
 }
 
-func findSquare(mu *sync.Mutex) {
-	for i := 0; i < 100000; i++ {
+func findSquare(mu *sync.Mutex, best *int) {
+	for i := 0; i < 1000000; i++ {
 		square := bestSquare()
-		e := totalError(square)
-		if e < 1 {
-			cN := combinations(square)
+		if e := totalError(square); e == 0 {
 			sN := symmetryPairs(square)
-
 			mu.Lock()
-			fmt.Printf("%f, %d, %d, %v\n", e, cN, sN, square)
+			if sN > *best {
+				*best = sN
+				fmt.Printf("%f, %d, %d, %v\n", e, combinations(square), sN, square)
+			}
 			mu.Unlock()
 		}
 	}
 }
 
 func main() {
-	original := [16]int{0, 5, 12, 16, 15, 11, 6, 1, 10, 3, 13, 7, 8, 14, 2, 9}
+	original := [16]int{1, 14, 14, 4, 11, 7, 6, 9, 8, 10, 10, 5, 13, 2, 3, 15}
 	fmt.Println(totalError(original))
 	fmt.Println(combinations(original))
 	fmt.Println(symmetryPairs(original))
 
+	var best int
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
 	for i := 0; i < 16; i++ {
 		wg.Add(1)
 		go func() {
-			findSquare(&mu)
+			findSquare(&mu, &best)
 			wg.Done()
 		}()
 	}
@@ -318,4 +319,5 @@ func main() {
 	wg.Wait()
 }
 
-// [13 3 8 9 5 12 14 2 11 6 1 15 4 12 10 7]
+// 0.000000, 309, 108, [9 13 4 7 3 8 10 12 6 1 14 12 15 11 5 2]
+// 0.000000, 342, 108, [5 11 10 7 0 17 13 3 16 1 2 14 12 4 8 9]

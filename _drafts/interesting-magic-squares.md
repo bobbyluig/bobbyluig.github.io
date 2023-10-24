@@ -4,11 +4,11 @@ title: "Interesting Magic Squares"
 date: 2023-10-22
 ---
 
-Earlier this year, I visited Barcelona for the first time and saw the magic square on the Sagrada Família. Unlike a normal 4×4 magic square, this one has a magic constant of 33 and a total of 310 combinations that add up to the magic constant. I wanted to know if there other magic squares that had even more interesting properties given similar constraints.
+Earlier this year, I visited Barcelona for the first time and saw the magic square on the Sagrada Familia. Unlike a normal 4×4 magic square, this one has a magic constant of 33 and a total of 310 combinations that add up to the magic constant. I wanted to know if there other magic squares that had even more interesting properties given similar constraints.
 
 ## Trivial and Non-normal
 
-We'll start with the definition of magic squares for Wikipedia. There are stricter definitions of magic squares, but we want one that includes the magic square on the Sagrada Família. 
+We'll start with the definition of magic squares for Wikipedia. There are stricter definitions of magic squares, but we want one that includes the magic square on the Sagrada Familia. 
 
 > "In recreational mathematics, a square array of numbers, usually positive integers, is called a magic square if the sums of the numbers in each row, each column, and both main diagonals are the same."  
 > — Magic square, Wikipedia[^wikipedia]
@@ -24,7 +24,7 @@ $$
 \end{bmatrix}
 $$
 
-As seen above, the Sagrada Família magic square has two repeating numbers, 10 and 14. This makes it trivial. However, we know that the magic constant of 33 makes it impossible to have a non-trivial magic square. If we relax the positive integer constraint and allow zeros, then it is possible to create non-trivial examples. Lee Sallows presents a few, along with a harsh critique of the architect (due to the triviality of the magic square composition).
+As seen above, the Sagrada Familia magic square has two repeating numbers, 10 and 14. This makes it trivial. However, we know that the magic constant of 33 makes it impossible to have a non-trivial magic square. If we relax the positive integer constraint and allow zeros, then it is possible to create non-trivial examples. Lee Sallows presents a few, along with a harsh critique of the architect (due to the triviality of the magic square composition).
 
 $$
 \begin{bmatrix}
@@ -125,9 +125,52 @@ Now that we know how to generate magic squares, we can focus on what makes a mag
 
 Although all positive magic squares with a magic constant of 33 are trivial, some are more trivial than others. We want to find magic squares that have the minium number of duplicates. In this case, the desired magic squares should have only one number duplicated. We can encode this into the error function by adding in $$(\operatorname{card}(x) - 15)$$.
 
-A second property that makes magic squares interesting is the number of groups that have symmetrical pairs and add up to the magic constant. We define symmetry as a reflection across the x-axis, y-axis, or both. Below are three examples groups in the Sagrada Familia magic square that have symmetry of the respective types. Note that by definition, all rows, columns, and major diagonals in any magic square are symmetrical groups.
+A second property that makes magic squares interesting is the number of groups that have symmetrical pairs and add up to the magic constant. We define symmetry as a reflection across the x-axis, y-axis, or both. Below are three examples groups in the Sagrada Familia magic square that have symmetry of the respective types[^sagrada-familia]. Note that by definition, all rows, columns, and major diagonals in any magic square are symmetrical groups.
 
-[^sagrada-familia]
+$$
+\begin{bmatrix}
+1 & 14 & 14 & \color{BurntOrange}{4} \\
+11 & \color{NavyBlue}{7} &  \color{NavyBlue}{6} & \color{BurntOrange}{9} \\
+8 & \color{BurntOrange}{10} & \color{BurntOrange}{10} &  \color{NavyBlue}{5} \\
+13 & 2 & 3 & \color{NavyBlue}{15} 
+\end{bmatrix}
+
+\begin{bmatrix}
+1 & 14 & 14 & 4 \\
+11 & \color{BurntOrange}{7} & \color{NavyBlue}{6} & 9 \\
+8 & \color{BurntOrange}{10} & \color{NavyBlue}{10} & 5 \\
+\color{BurntOrange}{13} & \color{NavyBlue}{2} & \color{BurntOrange}{3} & \color{NavyBlue}{15}
+\end{bmatrix}
+
+\begin{bmatrix}
+\color{BurntOrange}{1} & 14 & \color{BurntOrange}{14} & 4 \\
+11 & \color{NavyBlue}{7} & 6 & \color{NavyBlue}{9} \\
+\color{BurntOrange}{8} & 10 & \color{BurntOrange}{10} & 5 \\
+13 & \color{NavyBlue}{2} & 3 & \color{NavyBlue}{15} 
+\end{bmatrix}
+$$
+
+We want to find squares that have a lot of symmetrical groups, but this computation	is fairly expensive since we need to examine all potential groups for every perturbation. Instead of incorporating this into the error function, we first generate valid squares that only contain one duplicate and then calculate the number of symmetrical groups.
+
+## Results
+
+After examining a few million candidate squares, I found some very interesting ones. These are not necessarily the most interesting squares according to our criteria, but they were the best ones that the program produced after a few minutes. Out of curiosity, I also searched for interesting squares without any duplicates but allowing zero as a value. The results are shown below. Interestingly, both squares have 108 symmetrical groups each. For comparison, the magic square on the Sagrada Familia has 94 symmetrical groups.
+
+$$
+\begin{bmatrix}
+9 & 13 & 4 & 7 \\
+3 & 8 & 10 & 12 \\
+6 & 1 & 14 & 12 \\
+15 & 11 & 5 & 2 \\
+\end{bmatrix}
+
+\begin{bmatrix}
+5 & 11 & 10 & 7 \\
+0 & 17 & 13 & 3 \\
+16 & 1 & 2 & 14 \\
+12 & 4 & 8 & 9 \\
+\end{bmatrix}
+$$
 
 ## References
 
