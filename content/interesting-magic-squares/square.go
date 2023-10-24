@@ -285,16 +285,18 @@ func bestSquare(r *rand.Rand) [16]int {
 	return square
 }
 
-func findSquare(mu *sync.Mutex, best *int) {
+func findSquare(mu *sync.Mutex, bestS *int, bestC *int) {
 	r := rand.New(rand.NewSource(rand.Int63()))
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 10000000; i++ {
 		square := bestSquare(r)
 		if e := totalError(square); e == 0 {
 			sN := symmetryPairs(square)
+			sC := combinations(square)
 			mu.Lock()
-			if sN > *best {
-				*best = sN
-				fmt.Printf("%f, %d, %d, %v\n", e, combinations(square), sN, square)
+			if sN > *bestS || (sN == *bestS && sC > *bestC) {
+				*bestS = sN
+				*bestC = sC
+				fmt.Printf("%f, %d, %d, %v\n", e, sC, sN, square)
 			}
 			mu.Unlock()
 		}
@@ -307,14 +309,15 @@ func main() {
 	fmt.Println(combinations(original))
 	fmt.Println(symmetryPairs(original))
 
-	var best int
+	var bestS int
+	var bestC int
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
-			findSquare(&mu, &best)
+			findSquare(&mu, &bestS, &bestC)
 			wg.Done()
 		}()
 	}
@@ -323,4 +326,4 @@ func main() {
 }
 
 // 0.000000, 327, 55, [4 6 7 16 10 9 11 3 18 5 8 2 1 13 7 12]
-// 0.000000, 364, 53, [17 0 6 10 2 8 4 19 9 14 7 3 5 11 16 1]
+// 0.000000, 378, 54, [2 7 15 9 21 3 8 1 6 12 10 5 4 11 0 18]
