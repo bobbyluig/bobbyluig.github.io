@@ -176,12 +176,19 @@ func symmetryPairs(square [16]int) int {
 		if sliceError(square, slice) == 0.0 {
 			flipXSlice := sliceFlip(slice, flipX)
 			flipYSlice := sliceFlip(slice, flipY)
+			flipXYSlice := sliceFlip(flipXSlice, flipY)
 
 			if sliceError(square, flipXSlice) == 0.0 {
+				slicesSet[sliceToKey(slice)] = struct{}{}
 				slicesSet[sliceToKey(flipXSlice)] = struct{}{}
 			}
 			if sliceError(square, flipYSlice) == 0.0 {
+				slicesSet[sliceToKey(slice)] = struct{}{}
 				slicesSet[sliceToKey(flipYSlice)] = struct{}{}
+			}
+			if sliceError(square, flipXYSlice) == 0.0 {
+				slicesSet[sliceToKey(slice)] = struct{}{}
+				slicesSet[sliceToKey(flipXYSlice)] = struct{}{}
 			}
 		}
 	}
@@ -325,5 +332,5 @@ func main() {
 	wg.Wait()
 }
 
-// 0.000000, 327, 55, [4 6 7 16 10 9 11 3 18 5 8 2 1 13 7 12]
-// 0.000000, 378, 54, [2 7 15 9 21 3 8 1 6 12 10 5 4 11 0 18]
+// 0.000000, 323, 122, [13 7 2 11 3 5 10 15 9 4 14 6 8 17 7 1]
+// 0.000000, 374, 86, [8 1 21 3 5 9 2 17 4 12 10 7 16 11 0 6]

@@ -160,21 +160,21 @@ After generating around 100 million candidate squares, I found some very interes
 
 $$
 \begin{bmatrix}
-4 & 6 & 7 & 16 \\
-10 & 9 & 11 & 3 \\
-18 & 5 & 8 & 2 \\
-1 & 13 & 7 & 12 \\
+13 & 7 & 2 & 11 \\
+3 & 5 & 10 & 15 \\
+9 & 4 & 14 & 6 \\
+8 & 17 & 7 & 1 \\
 \end{bmatrix}
 
 \begin{bmatrix}
-2 & 7 & 15 & 9 \\
-21 & 3 & 8 & 1 \\
-6 & 12 & 10 & 5 \\
-4 & 11 & 0 & 18 \\
+8 & 1 & 21 & 3 \\
+5 & 9 & 2 & 17 \\
+4 & 12 & 10 & 7 \\
+16 & 11 & 0 & 6 \\
 \end{bmatrix}
 $$
 
-The left square has 1 duplicate, 55 symmetrical groups, and 327 combinations. The right square has 0 duplicates, 54 symmetrical groups, and 378 combinations. For comparison, the magic square on the Sagrada Familia has 2 duplicates, 45 symmetrical groups, and 310 combinations.
+The left square has 1 duplicate, 122 symmetrical groups, and 323 combinations. The right square has 0 duplicates, 86 symmetrical groups, and 374 combinations. For comparison, the magic square on the Sagrada Familia has 2 duplicates, 86 symmetrical groups, and 310 combinations.
 
 ## References
 
