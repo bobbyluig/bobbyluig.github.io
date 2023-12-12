@@ -1,0 +1,5 @@
+go 1.21.3
+
+use ./content/compressing-sentry-ownership-rules
+use ./content/interesting-magic-squares
+
