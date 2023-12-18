@@ -10,7 +10,7 @@ I had to solve a fun problem at work related to Sentry's ownership rules because
 
 For a given project, Sentry allows you to define a set of ownership rules to automatically route issues to appropriate teams based on matcher types such as file paths and tags. We use this feature extensively in our API service because while the platform is owned by one team, product routes and logic are owned by various teams across the company.
 
-Simplifying a bit, we have an internal CLI tool that engineers can manually run to generate ownership rules for Sentry based on metadata in our repository that defines team ownership for file paths and routes. The rules mapped each individual file path and route in the API service to an owner without any compression. An condensed example is shown below.
+Simplifying a bit, we have an internal CLI tool that engineers can manually run to generate ownership rules for Sentry based on metadata in our repository that defines team ownership for file paths and routes. The rules mapped each individual file path and route in the API service to an owner without any compression. A condensed example is shown below.
 
 ```
 path:*/routes/asset/asset_report_create.go #team-assets
@@ -103,11 +103,11 @@ With this fairly simple algorithm, we were able to compress the ownership rules 
 
 ## Extensions
 
-I thought of a two extensions to the existing solution that can improve the compression ratio and time complexity. Note that these do not necessarily result in readable rules or make the implementation easy to understand.
+I thought of two extensions to the existing solution that can improve the compression ratio and time complexity. Note that these do not necessarily result in readable rules or make the implementation easy to understand.
 
-The first idea is that we can relax the constraint of only outputting unambiguous rules. For example, if a single team owned most of rules, then we could have the first rule be `*` and then add more granular rules after that (Sentry uses the last matched rule for routing). This can likely be done in a greedy manner where we look for the best team to compress at each step. However, we do have to ensure that each compressed rule does not match any previously compressed team's rules.
+The first idea is that we can relax the constraint of only outputting unambiguous rules. For example, if a single team owned most of the rules, then we could have the first rule be `*` and then add more granular rules after that (Sentry uses the last matched rule for routing). This can likely be done in a greedy manner where we look for the best team to compress at each step. However, we do have to ensure that each compressed rule does not match any previously compressed team's rules.
 
-The second idea is that we can use a trie[^trie] (or radix tree[^radix]) data structure to improve lookup speed for a given prefix. During trie construction, we maintain a set (or a map counter) at each node that represents all teams which own any rule for the given prefix. When compressing, it takes constant time to check whether a given prefix is unambiguous. This approach is particularly useful if we needed to repeatedly compress the input while supporting rule insertions and deletions.
+The second idea is that we can use a trie[^trie] (or radix tree[^radix]) data structure to improve lookup speed for a given prefix. During trie construction, we maintain a set (or a map counter) at each node that represents all teams which own any rule for the given prefix. When compressing, it takes constant time to check whether a given prefix is unambiguous. This approach is particularly useful if we need to repeatedly compress the input while supporting rule insertions and deletions.
 
 ## References
 [^sentry]: Sentry Documentation (2023). [Ownership Rules](https://docs.sentry.io/product/issues/ownership-rules/#limitations).
