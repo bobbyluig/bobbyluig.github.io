@@ -8,6 +8,7 @@ url: "https://www.lujingcen.com"
 # Enabled plugins.
 plugins:
   - jekyll-paginate
+  - jekyll-sitemap
 
 # Pagination configuration
 paginate: 5

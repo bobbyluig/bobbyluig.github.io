@@ -5,4 +5,5 @@ gem "minima", :github => 'jekyll/minima', :ref => '2863624b903b17f838d6ce8d2f779
 
 group :jekyll_plugins do
   gem "jekyll-paginate"
+  gem "jekyll-sitemap"
 end
