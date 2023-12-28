@@ -85,7 +85,7 @@ type Database interface {
 	// returns without error, the transaction is committed. Otherwise, the 
 	// transaction is rolled back. Transient errors may be retried and cause the 
 	// function to be invoked multiple times. 
-	WithTx(ctx context.Context, fn func(ctx context.Context, tx *sql.Tx) error);
+	WithTx(ctx context.Context, fn func(ctx context.Context, tx *sql.Tx) error)
 }
 ```
 
