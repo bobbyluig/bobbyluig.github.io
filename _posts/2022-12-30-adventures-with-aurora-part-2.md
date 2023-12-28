@@ -93,7 +93,7 @@ In our case, `WithTx` was used throughout the application to run transactions ag
 
 ```go
 // WithTx batches operations from multiple calls into a single transaction.
-type (g *GroupCommitHandler) WithTx(
+func (g *GroupCommitHandler) WithTx(
 	ctx context.Context, 
 	fn func(ctx context.Context, tx *sql.Tx),
 ) error {

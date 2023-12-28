@@ -19,7 +19,9 @@ August 2021 - Present
 
 **Learned Garbage Collection.** Lujing Cen, Ryan Marcus, Hongzi Mao, Justin Gottschlich, Mohammad Alizadeh, Tim Kraska. Appeared in MAPL @ PLDI 2020. ([pdf](https://arxiv.org/pdf/2004.13301.pdf))
 
-**Block Affordances for GraphQL In App Inventor.** Lujing Cen, Evan Patton. Appeared in CTE 2019. ([pdf](https://www.eduhk.hk/cte2019/doc/CTE2019_Proceedings%20(ISSN%202664-035X).pdf))
+**Block Affordances for GraphQL In App Inventor.** Lujing Cen, Evan Patton. Appeared in CTE 2019 by CoolThink@JC. ([pdf](https://www.eduhk.hk/cte2019/doc/CTE2019_Proceedings%20(ISSN%202664-035X).pdf))
+
+**Provable Fairness.** Lujing Cen, Gloria Fang, Andrea Jaba. Final project for 6.857: Computer and Network Security (Spring 2019). ([pdf](https://courses.csail.mit.edu/6.857/2019/project/2-Cen-Fang-Jaba.pdf))
 
 ## Education
 

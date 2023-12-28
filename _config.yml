@@ -11,7 +11,7 @@ plugins:
   - jekyll-sitemap
 
 # Pagination configuration
-paginate: 5
+paginate: 10
 paginate_path: "/page/:num/"
 
 # Default front matter.

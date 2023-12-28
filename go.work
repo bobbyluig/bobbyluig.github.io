@@ -1,4 +1,4 @@
 go 1.21.3
 
 use ./content/interesting-magic-squares
-
+use ./content/memory-fragmentation-in-go
