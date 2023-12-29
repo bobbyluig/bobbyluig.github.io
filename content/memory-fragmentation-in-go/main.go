@@ -78,6 +78,8 @@ func Example1() {
 	Use(objectPtr)
 
 	PrintMemoryStats()
+
+	Use(slice, objectPtr)
 }
 
 func Example2() {
@@ -90,9 +92,11 @@ func Example2() {
 
 	objectPtr := slice[0]
 	slice = nil
-	Use(objectPtr, slice)
+	Use(slice, objectPtr)
 
 	PrintMemoryStats()
+
+	Use(slice, objectPtr)
 }
 
 func Example3() {
@@ -105,14 +109,16 @@ func Example3() {
 
 	badSlice := Copy(slice, 0, len(slice), 512)
 	slice = nil
-	Use(badSlice, slice)
+	Use(slice, badSlice)
 
 	PrintMemoryStats()
 
 	newSlice := Allocate[[32]byte](1 << 19)
-	Use(badSlice, newSlice)
+	Use(slice, badSlice, newSlice)
 
 	PrintMemoryStats()
+
+	Use(slice, badSlice, newSlice)
 }
 
 func Example4() {
@@ -121,34 +127,23 @@ func Example4() {
 	slice := Allocate[[16]byte](1 << 20)
 	Use(slice)
 
-	goodSlice := Copy(slice, 0, len(slice), 512)
-	slice = nil
-	Use(goodSlice, slice)
-
-	PrintMemoryStats()
-}
-
-func Example5() {
-	PrintMemoryStats()
-
-	slice := Allocate[[16]byte](1 << 20)
-	Use(slice)
-
 	badSlice := Copy(slice, 0, len(slice), 512)
 	slice = nil
-	Use(badSlice, slice)
-
-	goodSlice := make([]*[16]byte, len(badSlice))
-	for i := range goodSlice {
-		goodSlice[i] = new([16]byte)
-		*goodSlice[i] = *badSlice[i]
-	}
-	badSlice = nil
-	Use(badSlice, goodSlice)
+	Use(slice, badSlice)
 
 	PrintMemoryStats()
+
+	for i := range badSlice {
+		objectCopy := new([16]byte)
+		*objectCopy = *badSlice[i]
+		badSlice[i] = objectCopy
+	}
+
+	PrintMemoryStats()
+
+	Use(slice, badSlice)
 }
 
 func main() {
-	Example3()
+	Example4()
 }

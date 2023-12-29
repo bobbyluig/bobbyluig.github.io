@@ -55,46 +55,48 @@ func Use(objects ...any)
 
 ### Array of Pointers
 
-We start with a simple example where we allocate a contiguous 16 MB slice of 16 byte objects (we use `[n]byte` to represent `n`-byte objects, but it could be replaced with a struct of the same size). We then hold a reference to a single object in that slice and lose the reference to the slice. As expected, at (3), the GC cannot collect the underlying array since it is still alive.
+We start with a simple example where we allocate a contiguous 16 MB slice of 16-byte objects (we use `[n]byte` to represent `n`-byte objects, but it could be replaced with a struct of the same size). We then hold a reference to a single object in that slice and lose the reference to the slice. As expected, at (3), the GC cannot collect the underlying array since it is still alive.
 
 ```go
 func Example1() {
-	PrintMemoryStats() // (1) heapUsage: 0.42 MiB, maxFragmentation: 0.25 MiB
+	PrintMemoryStats() // (1) heapUsage: 0.41 MiB, maxFragmentation: 0.24 MiB
 
 	slice := make([][16]byte, 1<<20)
 	Use(slice)
 
-	PrintMemoryStats() // (2) heapUsage: 16.42 MiB, maxFragmentation: 0.25 MiB
+	PrintMemoryStats() // (2) heapUsage: 16.41 MiB, maxFragmentation: 0.24 MiB
 
 	objectPtr := &slice[0]
 	slice = nil
-	Use(objectPtr, slice)
+	Use(slice, objectPtr)
 
-	PrintMemoryStats() // (3) heapUsage: 16.43 MiB, maxFragmentation: 0.26 MiB
+	PrintMemoryStats() // (3) heapUsage: 16.41 MiB, maxFragmentation: 0.24 MiB
 
 	objectPtr = nil
-	Use(objectPtr)
+	Use(slice, objectPtr)
 
-	PrintMemoryStats() // (4) heapUsage: 0.42 MiB, maxFragmentation: 0.25 MiB
+	PrintMemoryStats() // (4) heapUsage: 0.41 MiB, maxFragmentation: 0.24 MiB
+
+	Use(slice, objectPtr)
 }
 ```
 
-Instead of putting all objects contiguously, we could instead allocate each object individually and use an array of pointers. This allows us to hold reference to individual objects without keeping the underlying array alive. In the example below, we allocate 16 MiB of 16 byte objects individually. Note that this does require an additional 8 MiB for the array of pointers. Unlike the previous example, holding a pointer to an object no longer keeps the array alive at (3).
+Instead of putting all objects contiguously, we could instead allocate each object individually and use an array of pointers. This allows us to hold reference to individual objects without keeping the underlying array alive. In the example below, we allocate 16 MiB of 16-byte objects individually. Note that this does require an additional 8 MiB for the array of pointers. Unlike the previous example, holding a pointer to an object no longer keeps the array alive at (3).
 
 ```go
 func Example2() {
-	PrintMemoryStats() // (1) heapUsage: 0.41 MiB, maxFragmentation: 0.24 MiB
+	PrintMemoryStats() // (1) heapUsage: 0.44 MiB, maxFragmentation: 0.27 MiB
 
 	slice := Allocate[[16]byte](1 << 20)
 	Use(slice)
 
-	PrintMemoryStats() // (2) heapUsage: 24.41 MiB, maxFragmentation: 0.23 MiB
+	PrintMemoryStats() // (2) heapUsage: 24.44 MiB, maxFragmentation: 0.26 MiB
 
 	objectPtr := slice[0]
 	slice = nil
 	Use(objectPtr, slice)
 
-	PrintMemoryStats() // (3) heapUsage: 0.41 MiB, maxFragmentation: 0.24 MiB
+	PrintMemoryStats() // (3) heapUsage: 0.45 MiB, maxFragmentation: 0.27 MiB
 }
 ```
 
@@ -111,35 +113,85 @@ func Example3() {
 
 	PrintMemoryStats() // (2) heapUsage: 24.41 MiB, maxFragmentation: 0.24 MiB
 
-	badSlice := Copy(slice, 0, len(slice), 512)
+	badSlice := Copy(slice, 0, len(slice), 1024)
 	slice = nil
-	Use(badSlice, slice)
+	Use(slice, badSlice)
 
-	PrintMemoryStats() // (3) heapUsage: 16.42 MiB, maxFragmentation: 16.20 MiB
+	PrintMemoryStats() // (3) heapUsage: 16.41 MiB, maxFragmentation: 16.19 MiB
 
 	newSlice := Allocate[[32]byte](1 << 19)
-	Use(badSlice, newSlice)
+	Use(slice, badSlice, newSlice)
 
-	PrintMemoryStats() // (4) heapUsage: 36.41 MiB, maxFragmentation: 16.18 MiB
+	PrintMemoryStats() // (4) heapUsage: 36.39 MiB, maxFragmentation: 16.17 MiB
+
+	Use(slice, badSlice, newSlice)
 }
 ```
 
-At (2), we do expect an additional 24 MiB of heap usage (16 MiB for objects and 8 MiB for the array of pointers). It seems that at (3), the heap usage should return to around the baseline level since both the slice and most of the objects are no longer alive. However, this is not the case. Instead, we see that heap usage only goes down by 8 MiB while the max fragmentation increases by 16 MiB. It turns out that most pages are only holding a single 16 byte object each.
+At (2), we do expect an additional 24 MiB of heap usage (16 MiB for objects and 8 MiB for the array of pointers). It seems that at (3), the heap usage should return to around the baseline level since both the slice and most of the objects are no longer alive. However, this is not the case. Instead, we see that heap usage only goes down by 8 MiB while the max fragmentation increases by 16 MiB. It turns out that most pages are only holding a single 16-byte object each.
 
 As mentioned before, Go manages memory in pages and has a non-moving GC. Each internal page is 8 KiB. In this case, a page will fit exactly 512 16-byte objects. Objects of the same size class that are allocated around the same time will be placed on the same pages assuming that there are no existing pages for that size class. As a result, holding a reference to every 512th object is a pathological case that maximizes fragmentation. We repeat the experiment up to (3) but with differing step values to show that fragmentation is indeed highest at the chosen value.
 
 | step | heapUsage (-baseline) | maxFragmentation (-baseline) |
 |:----:|:---------------------:|:----------------------------:|
-|  128 |       16.07 MiB       |           15.87 MiB          |
-|  256 |       16.04 MiB       |           15.94 MiB          |
-|  512 |       16.01 MiB       |           15.95 MiB          |
-| 1024 |        8.01 MiB       |           7.98 MiB           |
-| 2048 |        4.02 MiB       |           4.00 MiB           |
+|  128 |       16.07 MiB       |           15.88 MiB          |
+|  256 |       16.03 MiB       |           15.94 MiB          |
+|  512 |       16.00 MiB       |           15.94 MiB          |
+| 1024 |        8.04 MiB       |           8.00 MiB           |
+| 2048 |        4.03 MiB       |           3.99 MiB           |
 
-### Real-World Application
+At (4), we see that a new allocation of 16 MiB of 32-byte objects (which are in a different size class) cannot use most of the existing pages containing fragmented space. As a result, the peak heap usage hovers at around 36 MiB instead of at around 20 MiB if there was no fragmentation. Note that there is a [special case](https://github.com/golang/go/blob/bbab863ada264642e2755f123ef3f84a6b3451d0/src/runtime/malloc.go#L1032) for tiny allocations in Go that are less than 16 B. These allocations are managed as 16 B blocks and can reuse the same pages as objects in the 16 B size class.
+
+### Avoiding Fragmentation
+
+There are many ways avoid fragmentation, but there is not single ideal solution for all cases. It is good to assess the requirements of the workload and the constraints in place.
+
+- Reduce the overall number of allocations in the application (e.g., use `[]T` instead of `[]*T`).
+- Use a buffer pool to reduce the number of size classes that are needed[^vora] (e.g., allow smaller allocations to reuse existing larger chunks of memory in the application).
+- Maintain temporal locality for allocations[^sakamoto] (e.g., minimize the time between when an object is allocated to when it is freed and allocate long-lived objects close together).
+- Occasionally perform manual compaction by copying objects.
+
+The last point warrants more discussion because I think it requires very little change to application logic compared to the alternatives. If we know that there are long-lived objects which have poor temporal locality and/or vary greatly in size classes, we can still reduce fragmentation by manually copying them occasionally. This effectively compacts the memory and allows these objects to better utilize existing pages that may be heavily fragmented.
+
+```go
+func Example4() {
+	PrintMemoryStats() // (1) heapUsage: 0.41 MiB, maxFragmentation: 0.24 MiB
+
+	slice := Allocate[[16]byte](1 << 20)
+	Use(slice)
+
+	badSlice := Copy(slice, 0, len(slice), 512)
+	slice = nil
+	Use(slice, badSlice)
+
+	PrintMemoryStats() // (2) heapUsage: 16.42 MiB, maxFragmentation: 16.20 MiB
+
+	for i := range badSlice {
+		objectCopy := new([16]byte)
+		*objectCopy = *badSlice[i]
+		badSlice[i] = objectCopy
+	}
+
+	PrintMemoryStats() // (3) heapUsage: 0.47 MiB, maxFragmentation: 0.25 MiB
+
+	Use(slice, badSlice)
+}
+```
+
+In the example above, we have the same fragmentation issue as before. However, we show that after reallocating and copying all objects in the existing slice, fragmentation decrease back to baseline levels. This technique can be applied to more complex data structures provided that all nested pointers are reallocated. Note that compaction may need to be performed continually until all of the associated long-lived objects are freed. One approach is to amortize the cost of reallocations by compacting only when the number of  long-lived objects doubles (e.g., by looking at the length of the container slice). Using a timed-based approach also works, but requires more application-specific tuning.
+
+### Real-World Example
+
+There was a service that started running into out of memory issues after we added a long-running task that computed some aggregate statistics. However, it took a few hours for these issues to manifest after starting the task. A few application properties hinted at memory fragmentation as the root cause.
+
+- The long-running task itself does not require that much total memory since it stored less than 1 KiB per entry. However, it did slowly accumulate pointers to small objects allocated over multiple hours for processing on the order 50,000 entries.
+- The service was also serving other requests that involved fairly large bursts of object allocations. It ingested data and processed PDFs. It was not uncommon for a request to need on the order of 10 MiB in allocations that was then all freed once the request completed.
+
 
 ### References
 
 [^gc-guide]: Go Authors (2023). [A Guide to the Go Garbage Collector](https://tip.golang.org/doc/gc-guide).
 [^jvm]: Oracle Help Center (2023). [Garbage-First (G1) Garbage Collector](https://docs.oracle.com/en/java/javase/17/gctuning/garbage-first-g1-garbage-collector1.html#GUID-ED3AB6D3-FD9B-4447-9EDF-983ED2F7A573).
 [^v8]: Marshall, Peter (2019). [Trash talk: the Orinoco garbage collector](https://v8.dev/blog/trash-talk).
+[^vora]: Vora, Sanjay (2022). [Overcoming Go Lang’s memory problem](https://www.druva.com/blog/overcoming-go-langs-memory-problem).
+[^sakamoto]: Sakamoto, Hiroki (2023). [Why I encountered Go memory fragmentation? How did I resolve it?](https://medium.com/@taisho6339/why-i-encountered-go-memory-fragmentation-how-did-i-resolve-it-8542afe16eee).
