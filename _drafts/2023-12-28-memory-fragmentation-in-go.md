@@ -100,7 +100,7 @@ func Example2() {
 
 ### Pathological Scenario
 
-Let's continue with the array of pointers example. However, instead of keeping only one object alive, we will keep every 512th object alive (more on why later).
+Let's continue with the array of pointers example. However, instead of keeping only one object alive, we will keep every 512th object alive (more on why later). This should only result in 2,048 objects being kept alive, or around 32 KiB. However, the actual memory usage is fairly surprising.
 
 ```go
 func Example3() {
@@ -123,6 +123,18 @@ func Example3() {
 	PrintMemoryStats() // (4) heapUsage: 36.41 MiB, maxFragmentation: 16.18 MiB
 }
 ```
+
+At (2), we do expect an additional 24 MiB of heap usage (16 MiB for objects and 8 MiB for the array of pointers). It seems that at (3), the heap usage should return to around the baseline level since both the slice and most of the objects are no longer alive. However, this is not the case. Instead, we see that heap usage only goes down by 8 MiB while the max fragmentation increases by 16 MiB. It turns out that most pages are only holding a single 16 byte object each.
+
+As mentioned before, Go manages memory in pages and has a non-moving GC. Each internal page is 8 KiB. In this case, a page will fit exactly 512 16-byte objects. Objects of the same size class that are allocated around the same time will be placed on the same pages assuming that there are no existing pages for that size class. As a result, holding a reference to every 512th object is a pathological case that maximizes fragmentation. We repeat the experiment up to (3) but with differing step values to show that fragmentation is indeed highest at the chosen value.
+
+| step | heapUsage (-baseline) | maxFragmentation (-baseline) |
+|:----:|:---------------------:|:----------------------------:|
+|  128 |       16.07 MiB       |           15.87 MiB          |
+|  256 |       16.04 MiB       |           15.94 MiB          |
+|  512 |       16.01 MiB       |           15.95 MiB          |
+| 1024 |        8.01 MiB       |           7.98 MiB           |
+| 2048 |        4.02 MiB       |           4.00 MiB           |
 
 ### Real-World Application
 
