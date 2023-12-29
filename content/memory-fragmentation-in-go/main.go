@@ -83,35 +83,34 @@ func Example1() {
 func Example2() {
 	PrintMemoryStats()
 
-	array := Allocate[[16]byte](1 << 20)
-	Use(array)
+	slice := Allocate[[16]byte](1 << 20)
+	Use(slice)
 
 	PrintMemoryStats()
 
-	objectPtr := array[0]
-	array = nil
-	Use(objectPtr, array)
+	objectPtr := slice[0]
+	slice = nil
+	Use(objectPtr, slice)
 
 	PrintMemoryStats()
 }
 
 func Example3() {
+	PrintMemoryStats()
+
+	slice := Allocate[[16]byte](1 << 20)
+	Use(slice)
 
 	PrintMemoryStats()
 
-	array := Allocate[[16]byte](1 << 20)
-	Use(array)
+	badSlice := Copy(slice, 0, len(slice), 512)
+	slice = nil
+	Use(badSlice, slice)
 
 	PrintMemoryStats()
 
-	badArray := Copy(array, 0, len(array), 512)
-	array = nil
-	Use(badArray, array)
-
-	PrintMemoryStats()
-
-	newArray := Allocate[[32]byte](1 << 19)
-	Use(badArray, newArray)
+	newSlice := Allocate[[32]byte](1 << 19)
+	Use(badSlice, newSlice)
 
 	PrintMemoryStats()
 }
@@ -119,12 +118,12 @@ func Example3() {
 func Example4() {
 	PrintMemoryStats()
 
-	array := Allocate[[16]byte](1 << 20)
-	Use(array)
+	slice := Allocate[[16]byte](1 << 20)
+	Use(slice)
 
-	goodArray := Copy(array, 0, len(array), 512)
-	array = nil
-	Use(goodArray, array)
+	goodSlice := Copy(slice, 0, len(slice), 512)
+	slice = nil
+	Use(goodSlice, slice)
 
 	PrintMemoryStats()
 }
@@ -132,24 +131,24 @@ func Example4() {
 func Example5() {
 	PrintMemoryStats()
 
-	array := Allocate[[16]byte](1 << 20)
-	Use(array)
+	slice := Allocate[[16]byte](1 << 20)
+	Use(slice)
 
-	badArray := Copy(array, 0, len(array), 512)
-	array = nil
-	Use(badArray, array)
+	badSlice := Copy(slice, 0, len(slice), 512)
+	slice = nil
+	Use(badSlice, slice)
 
-	goodArray := make([]*[16]byte, len(badArray))
-	for i := range goodArray {
-		goodArray[i] = new([16]byte)
-		*goodArray[i] = *badArray[i]
+	goodSlice := make([]*[16]byte, len(badSlice))
+	for i := range goodSlice {
+		goodSlice[i] = new([16]byte)
+		*goodSlice[i] = *badSlice[i]
 	}
-	badArray = nil
-	Use(badArray, goodArray)
+	badSlice = nil
+	Use(badSlice, goodSlice)
 
 	PrintMemoryStats()
 }
 
 func main() {
-	Example1()
+	Example3()
 }
