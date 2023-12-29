@@ -45,7 +45,7 @@ func ToMebibytes(bytes uint64) float64 {
 }
 
 // PrintMemoryStats prints out memory statistics after first running garbage collection and
-// returning as much memory to the operation system as possible.
+// returning as much memory to the operating system as possible.
 // go:noinline
 func PrintMemoryStats() {
 	runtime.GC()

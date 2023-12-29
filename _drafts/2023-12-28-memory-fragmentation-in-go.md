@@ -4,7 +4,7 @@ title: "Memory Fragmentation in Go"
 date: 2023-12-28
 ---
 
-Inspired by a seemingly unexplainable out of memory error in a service, I set out to understand how Go's non-moving memory management works under the hood. This led to some interesting learnings about memory fragmentation, the type of workloads that are prone to this issue, and how to mitigate them.
+Inspired by a seemingly unexplainable out of memory error in a service, I set out to understand how Go's non-moving memory management works under the hood. This led to some interesting learnings about memory fragmentation, the types of workloads that are prone to this issue, and potential mitigations.
 
 ### Memory Management
 
@@ -21,7 +21,7 @@ Go provides accessible memory statistics through the `runtime.ReadMemStats` func
 - `heapUsage`: This is the current heap usage from all used pages (including partially used pages that may contain as little as one small object). We compute this as `HeapSys - HeapReleased`. It does not capture all usage in the resident set size, but is a good proxy.
 - `maxFragmentation`: This is the upper bound on memory fragmentation due to non-full pages. We compute this as `HeapInuse - HeapAlloc`. New objects of the right size class could fill some of the existing gaps and decrease fragmentation.
 
-In a real applications, it is more useful to have the upper bound percentage of fragmentation (measured as `maxFragmentation / heapUsage`) rather than absolute quantities. However, it is easier to track allocation groups in examples if we have exact memory usages.
+In a real application, it is more useful to have the upper bound percentage of fragmentation (measured as `maxFragmentation / heapUsage`) rather than absolute quantities. However, it is easier to track allocation groups in examples if we have exact memory usages.
 
 ### Setup
 
@@ -46,7 +46,7 @@ func Allocate[T any](n int) []*T
 func Copy[T any](slice []T, start int, stop int, step int) []T
 
 // PrintMemoryStats prints out memory statistics after first running garbage 
-// collection and returning as much memory to the operation system as possible.
+// collection and returning as much memory to the operating system as possible.
 func PrintMemoryStats()
 
 // Use indicates the objects should not be optimized away.
@@ -81,7 +81,7 @@ func Example1() {
 }
 ```
 
-Instead of putting all objects contiguously, we could instead allocate each object individually and use an array of pointers. This allows us to hold reference to individual objects without keeping the underlying array alive. In the example below, we allocate 16 MiB of 16-byte objects individually. Note that this does require an additional 8 MiB for the array of pointers. Unlike the previous example, holding a pointer to an object no longer keeps the array alive at (3).
+Instead of putting all objects contiguously, we could instead allocate each object individually and use an array of pointers. This allows us to hold references to individual objects without keeping the underlying array alive. In the example below, we allocate 16 MiB of 16-byte objects individually. Note that this does require an additional 8 MiB for the array of pointers. Unlike the previous example, holding a pointer to an object no longer keeps the array alive at (3).
 
 ```go
 func Example2() {
@@ -144,7 +144,7 @@ At (4), we see that a new allocation of 16 MiB of 32-byte objects (which are in 
 
 ### Avoiding Fragmentation
 
-There are many ways avoid fragmentation, but there is not single ideal solution for all cases. It is good to assess the requirements of the workload and the constraints in place.
+There are many ways to avoid fragmentation, but there is not a single ideal solution for all cases. It is good to assess the requirements of the workload and the constraints in place.
 
 - Reduce the overall number of allocations in the application (e.g., use `[]T` instead of `[]*T`).
 - Use a buffer pool to reduce the number of size classes that are needed[^vora] (e.g., allow smaller allocations to reuse existing larger chunks of memory in the application).
@@ -178,15 +178,17 @@ func Example4() {
 }
 ```
 
-In the example above, we have the same fragmentation issue as before. However, we show that after reallocating and copying all objects in the existing slice, fragmentation decrease back to baseline levels. This technique can be applied to more complex data structures provided that all nested pointers are reallocated. Note that compaction may need to be performed continually until all of the associated long-lived objects are freed. One approach is to amortize the cost of reallocations by compacting only when the number of  long-lived objects doubles (e.g., by looking at the length of the container slice). Using a timed-based approach also works, but requires more application-specific tuning.
+In the example above, we have the same fragmentation issue as before. However, we show that after reallocating and copying all objects in the existing slice, fragmentation decreases back to baseline levels. This technique can be applied to more complex data structures provided that all nested pointers are reallocated. Note that compaction may need to be performed continually until all of the associated long-lived objects are freed. One approach is to amortize the cost of reallocations by compacting only when the number of  long-lived objects doubles (e.g., by looking at the length of the container slice). Using a timed-based approach also works, but requires more application-specific tuning.
 
 ### Real-World Example
 
 There was a service that started running into out of memory issues after we added a long-running task that computed some aggregate statistics. However, it took a few hours for these issues to manifest after starting the task. A few application properties hinted at memory fragmentation as the root cause.
 
-- The long-running task itself does not require that much total memory since it stored less than 1 KiB per entry. However, it did slowly accumulate pointers to small objects allocated over multiple hours for processing on the order 50,000 entries.
-- The service was also serving other requests that involved fairly large bursts of object allocations. It ingested data and processed PDFs. It was not uncommon for a request to need on the order of 10 MiB in allocations that was then all freed once the request completed.
+- The long-running task does not require that much total memory since it stored less than 1 KiB per entry. However, it did slowly accumulate small objects over multiple hours while processing on the order of 50,000 entries.
+- The service was also serving other requests that involved fairly large bursts of object allocations because it ingested data and processed PDFs. It was not uncommon for a request to need on the order of 10 MiB in allocations that was then all freed once the request completed.
+- The long-running task also had similar bursts of allocations for each entry, except some objects in these allocations are kept alive until the entire task finished.
 
+Due to the pattern of memory allocations and slow accumulation of pointers over time, there was poor temporal consistency. As a result, fragmentation likely increased slowly over time until the service was no longer able to serve normal requests. The solution we ended up choosing here was to separate these workloads. The long-running task was moved to a separate service so that the main service only served fast requests without long-lived objects.
 
 ### References
 
