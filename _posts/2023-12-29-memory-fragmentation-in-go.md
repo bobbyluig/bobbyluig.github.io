@@ -113,7 +113,7 @@ func Example3() {
 
 	PrintMemoryStats() // (2) heapUsage: 24.41 MiB, maxFragmentation: 0.24 MiB
 
-	badSlice := Copy(slice, 0, len(slice), 1024)
+	badSlice := Copy(slice, 0, len(slice), 512)
 	slice = nil
 	Use(slice, badSlice)
 
