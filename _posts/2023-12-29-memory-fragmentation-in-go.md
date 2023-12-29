@@ -12,7 +12,7 @@ The Go runtime [source code](https://github.com/golang/go/blob/bbab863ada264642e
 
 Go relies on garbage collection, but its GC is non-moving. This means that once an object is allocated, its memory address will not change[^gc-guide]. There are advantages to this memory management approach such as lower GC pause times. However, a non-moving GC cannot perform compaction like that of JVM[^jvm] and V8[^v8]. As a result, Go is more prone to memory fragmentation.
 
-A background job in the Go runtime will occasionally look for pages that are no longer used and return them to the operating system through the `madvise` system call with a value of `MADV_DONTNEED`. This does not change the virtual memory range, but indicates to the operating system that the physical pages can be freed. The resident set size of the process is decreased accordingly.
+A background job in the Go runtime will occasionally look for pages that are no longer used and return them to the operating system through the `madvise` system call with a value of `MADV_DONTNEED`. This does not change the virtual memory range, but indicates to the operating system that the physical pages can be freed. The resident set size of the process is decreased accordingly. Note that this scavenging process can also occur synchronously during page allocations.
 
 ### Measuring Fragmentation
 

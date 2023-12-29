@@ -48,7 +48,6 @@ func ToMebibytes(bytes uint64) float64 {
 // returning as much memory to the operating system as possible.
 // go:noinline
 func PrintMemoryStats() {
-	runtime.GC()
 	debug.FreeOSMemory()
 
 	var m runtime.MemStats
