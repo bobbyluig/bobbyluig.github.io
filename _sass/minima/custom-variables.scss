@@ -1,3 +1,11 @@
 $base-font-family: 'Roboto', sans-serif;
 $code-font-family: 'Roboto Mono', monospace;
-$code-background-color: #f6f8fa;
+
+:root {
+  --minima-code-background-color: #f6f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --minima-code-background-color: #161b22;
+  }
+}
