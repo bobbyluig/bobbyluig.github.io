@@ -9,6 +9,7 @@ url: "https://www.lujingcen.com"
 plugins:
   - jekyll-paginate
   - jekyll-sitemap
+  - jekyll-last-modified-at
 
 # Pagination configuration
 paginate: 10
