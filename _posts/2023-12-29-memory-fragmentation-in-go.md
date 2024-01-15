@@ -6,7 +6,7 @@ date: 2023-12-29
 
 Inspired by a seemingly unexplainable out of memory error in a service, I set out to understand how Go's non-moving memory management works under the hood. This led to some interesting learnings about memory fragmentation, the types of workloads that are prone to this issue, and potential mitigations.
 
-### Memory Management
+## Memory Management
 
 The Go runtime [source code](https://github.com/golang/go/blob/bbab863ada264642e2755f123ef3f84a6b3451d0/src/runtime/malloc.go) has good documentation on how memory management works. We will summarize a few of the relevant points here. At a high level, Go's memory allocator draws on ideas from `tcmalloc`. Small objects up to 32 KiB are rounded into [size classes](https://github.com/golang/go/blob/bbab863ada264642e2755f123ef3f84a6b3451d0/src/runtime/sizeclasses.go) and allocated on pages containing only objects of the same size class. Larger objects are directly allocated using runs of pages from the heap. If the heap does not have enough empty pages, a new group of pages will be requested from the operating system.
 
@@ -14,7 +14,7 @@ Go relies on garbage collection, but its GC is non-moving. This means that once 
 
 A background job in the Go runtime will occasionally look for pages that are no longer used and return them to the operating system through the `madvise` system call with a value of `MADV_DONTNEED`. This does not change the virtual memory range, but indicates to the operating system that the physical pages can be freed. The resident set size of the process is decreased accordingly. Note that this scavenging process can also occur synchronously during page allocations.
 
-### Measuring Fragmentation
+## Measuring Fragmentation
 
 Go provides accessible memory statistics through the `runtime.ReadMemStats` function. We are mostly interested in the `Heap*` variables. We describe two quantities that will be measured in later examples.
 
@@ -23,7 +23,7 @@ Go provides accessible memory statistics through the `runtime.ReadMemStats` func
 
 In a real application, it is more useful to have the upper bound percentage of fragmentation (measured as `maxFragmentation / heapUsage`) rather than absolute quantities. However, it is easier to track allocation groups in examples if we have exact memory usages.
 
-### Setup
+## Setup
 
 I'm running experiments in WSL 2 with Ubuntu 22.04.3 LTS. Experiments should be reproducible on any Linux-based systems running the same Go version, although there is some non-determinism due to the nature of garbage collection and OS interactions.
 
@@ -53,7 +53,7 @@ func PrintMemoryStats()
 func Use(objects ...any)
 ```
 
-### Array of Pointers
+## Array of Pointers
 
 We start with a simple example where we allocate a contiguous 16 MB slice of 16-byte objects (we use `[n]byte` to represent `n`-byte objects, but it could be replaced with a struct of the same size). We then hold a reference to a single object in that slice and lose the reference to the slice. As expected, at (3), the GC cannot collect the underlying array since it is still alive.
 
@@ -100,7 +100,7 @@ func Example2() {
 }
 ```
 
-### Pathological Scenario
+## Pathological Scenario
 
 Let's continue with the array of pointers example. However, instead of keeping only one object alive, we will keep every 512th object alive (more on why later). This should only result in 2,048 objects being kept alive, or around 32 KiB. However, the actual memory usage is fairly surprising.
 
@@ -142,7 +142,7 @@ As mentioned before, Go manages memory in pages and has a non-moving GC. Each in
 
 At (4), we see that a new allocation of 16 MiB of 32-byte objects (which are in a different size class) cannot use most of the existing pages containing fragmented space. As a result, the peak heap usage hovers at around 36 MiB instead of at around 20 MiB if there was no fragmentation. Note that there is a [special case](https://github.com/golang/go/blob/bbab863ada264642e2755f123ef3f84a6b3451d0/src/runtime/malloc.go#L1032) for tiny allocations in Go that are less than 16 B. These allocations are managed as 16 B blocks and can reuse the same pages as objects in the 16 B size class.
 
-### Avoiding Fragmentation
+## Avoiding Fragmentation
 
 There are many ways to avoid fragmentation, but there is not a single ideal solution for all cases. It is good to assess the requirements of the workload and the constraints in place.
 
@@ -180,7 +180,7 @@ func Example4() {
 
 In the example above, we have the same fragmentation issue as before. However, we show that after reallocating and copying all objects in the existing slice, fragmentation decreases back to baseline levels. This technique can be applied to more complex data structures provided that all nested pointers are reallocated. Note that compaction may need to be performed continually until all of the associated long-lived objects are freed. One approach is to amortize the cost of reallocations by compacting only when the number of  long-lived objects doubles (e.g., by looking at the length of the container slice). Using a timed-based approach also works, but requires more application-specific tuning.
 
-### Real-World Example
+## Real-World Example
 
 There was a service that started running into out of memory issues after we added a long-running task that computed some aggregate statistics. However, it took a few hours for these issues to manifest after starting the task. A few application properties hinted at memory fragmentation as the root cause.
 
@@ -190,7 +190,7 @@ There was a service that started running into out of memory issues after we adde
 
 Due to the pattern of memory allocations and slow accumulation of pointers over time, there was poor temporal consistency. As a result, fragmentation likely increased slowly over time until the service was no longer able to serve normal requests. The solution we ended up choosing here was to separate these workloads. The long-running task was moved to a separate service so that the main service only served fast requests without long-lived objects.
 
-### References
+## References
 
 [^gc-guide]: Go Authors (2023). [A Guide to the Go Garbage Collector](https://tip.golang.org/doc/gc-guide).
 [^jvm]: Oracle Help Center (2023). [Garbage-First (G1) Garbage Collector](https://docs.oracle.com/en/java/javase/17/gctuning/garbage-first-g1-garbage-collector1.html#GUID-ED3AB6D3-FD9B-4447-9EDF-983ED2F7A573).
