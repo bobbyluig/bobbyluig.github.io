@@ -10,13 +10,13 @@ It is often said that all problems in computer science can be solved by another 
 
 I have worked on various migrations over the last few years at my job. Although they are certainly not the most exciting tasks in software engineering (in my opinion), I think they present interesting challenges when done safely at scale. I wanted to share three scenarios from different types of online migrations. The common thread is that they all use two clients managed at the application level. While it is possible in some cases to perform migrations at the network or load balancer layer, there are distinct advantages to the dual-client approach that we will discuss in individual sections.
 
-## Cluster Migration
+## Service Migration
 
 The first scenario is that we want to migrate a service from one cluster to another in a controlled way. The main reason for not switching over all of the traffic at once is that we are not sure whether the new cluster behaves in the same way as the existing cluster. For example, slight configuration differences can lead to new errors or performance degradations that are only noticeable at scale. By shifting traffic in smaller increments, we can reduce the likelihood and magnitude of service downtime.
 
 One approach is to do this at the networking layer. This is usually implemented through weighted DNS records[^devgrowth] (i.e., the calling services probabilistically see either the old or new cluster when looking up the DNS records for the service being migrated). A major disadvantage is that this requires more than one calling service since DNS records are cached. We unfortunately had a singleton caller that was sending a lot of traffic to the migrating service. In addition, we wanted to migrate less critical traffic first, and this was only possible by examining the gRPC requests.
 
-We can use a dual-client approach to control the cluster migration. Two underlying clients are initialized at startup, one for the old cluster and one for the new cluster. A migration client wraps both underlying clients and routes between them using a flag that could be dynamically controlled. Additional logic reads metadata from each gRPC request to allow more granular migration controls.
+We can use a dual-client approach to control the service migration. Two underlying clients are initialized at startup, one for the old cluster and one for the new cluster. A migration client wraps both underlying clients and routes between them using a flag that could be dynamically controlled. Additional logic reads metadata from each gRPC request to allow more granular migration controls.
 
 ```go
 type Client interface {
