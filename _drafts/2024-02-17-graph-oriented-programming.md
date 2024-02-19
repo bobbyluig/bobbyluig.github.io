@@ -75,6 +75,56 @@ At a high level, the language draws on inspirations from the node graph architec
 
 ## Static Analysis
 
+Static analysis can be performed on a workflow before it is published to minimize errors and unintended behavior. This is similar to what a compiler would do after transforming a program into a control-flow graph[^cfg]. However, a workflow in this language is effectively already a control-flow graph where nodes are basic blocks. We do not introspect the implementation of processors and panes since they can be arbitrarily complex. Not all of the analysis types described below are implemented in production, but they are still interesting to explore.
+
+### Unset Inputs
+
+One runtime error that can occur is when a node specifies an input primitive that has never been set in the session. Due to branching behavior introduced switches, it is also possible that only some paths to a node will leave an input primitive unset. To avoid these issues, we want to warn developers when a node has an input that is not guaranteed to have been set.
+
+{% raw %}
+<div class="mermaid">
+flowchart LR
+    Source([Source]) --> A["A():(p1)"]
+    A --> B{{"B(p1):()"}}
+    B --> C["C(p1):(p2)"]
+    B --> D["D(p1):(p3)"]
+    D --> E["E(p2):()"]
+    C --> E
+    E --> Sink([Sink])
+</div>
+{% endraw %}
+
+In the example above, we show the input and output primitives for each node. Node `E` has a potentially unset input `p2` since there exists a path going through node `D` from the source node to `E` where `p2` is never outputted. Using this observation, we can define a node `n` as having a potentially unset input `p` if there exists at least one path from the source node to `n` where `p` is not the output of any nodes along that path.
+
+For a given node `n` and input `p`, we can determine if that input is potentially unset by using depth-first search to identify a path from `n` back to the source node in the transpose graph[^transpose] considering only nodes that do not output `p`. If such a path exists, then `p` is a potentially unset input for `n`, and the path is one example traversal where `p` will not be set. This approach is not particularly efficient if done for every node and input in the workflow.
+
+Another approach is to use data-flow analysis[^data-flow] to determine the set of primitive that are guaranteed to be assigned at the entrypoint of every node. We can perform a forward analysis starting with the empty set at the source node. We define a transfer function for each node where the exit set is the union of the entry set and the node's output primitives. We also define a meet operation that combines the exit sets of predecessors by intersecting them. Potentially unset inputs can be determined by computing the set difference between a node's output primitives and the guaranteed-assigned primitives at the entrypoint of that node.
+
+### Unused Outputs
+
+### Unreachable Nodes
+
+If a node is not reachable from the source node, then it will never be executed and we should not include it in the workflow. This usually happens when new nodes are added to a workflow but are not connected to the remainder of the workflow correctly.
+
+{% raw %}
+<div class="mermaid">
+flowchart LR
+    Source([Source]) --> A
+    A --> B
+    C --> D
+    D --> E{{E}}
+    E --> B
+    E --> C
+    B --> Sink([Sink])
+</div>
+{% endraw %}
+
+Unreachable nodes can be found by performing depth-first search starting from the source node. All reachable nodes will be marked by the search. Any remaining nodes are guaranteed to be unreachable. In the example above, nodes `C`, `D`, and `E` are unreachable. Note that it is not enough to just validate that each node has an input edge since cycles are permitted.
+
+We can do slightly better if we are able to prove that certain switch branches are never taken. However, due to the lack of node introspection, we can only assert basic properties such as whether a primitive is definitely not set. To do this, we can examine the transpose graph and use depth-first search to verify that no visited node outputs the given primitive.
+
+### Infinite Loops
+
 ## Workflow Transpilation
 
 ## Refactoring with Subgraphs
@@ -82,3 +132,6 @@ At a high level, the language draws on inspirations from the node graph architec
 ## References
 
 [^node-graph]: Wikipedia (2024). [Node graph architecture](https://en.wikipedia.org/wiki/Node_graph_architecture).
+[^cfg]: University of Toronto (2017). [17.8 Application: Control Flow Graphs](https://www.teach.cs.toronto.edu/~csc110y/fall/notes/17-graphs/08-control-flow-graphs.html).
+[^transpose]: Wikipedia (2024). [Transpose graph](https://en.wikipedia.org/wiki/Transpose_graph).
+[^data-flow]: Carnegie Mellon University (2011). [Introduction to Data Flow Analysis](https://www.cs.cmu.edu/afs/cs/academic/class/15745-s11/public/lectures/L4-Intro-to-Dataflow.pdf).
