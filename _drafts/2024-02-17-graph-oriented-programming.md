@@ -98,7 +98,7 @@ flowchart LR
 
 In the example above, we show the input and output primitives for each node. `E` has a potentially unset input `p2` since there is a path going through node `D` from the source to `E` where `p2` is never set by any node. Using this observation, we can define a node `n` as having a potentially unset input `p` if there exists at least one path from the source to `n` where `p` is not the output of any nodes along that path.
 
-For a given node `n` and input `p`, we can determine if that input is potentially unset by using depth-first search to identify a simple path (with no repeating nodes) from `n` back to the source in the transpose graph[^transpose] considering only nodes that do not output `p`. If such a path exists, then `p` is a potentially unset input for `n`, and the path is one traversal where `p` will not be set. This approach is not efficient if done for every node and input in the workflow.
+For a given node `n` and input `p`, we can determine if that input is potentially unset by using depth-first search to identify a path from `n` back to the source in the transpose graph[^transpose] considering only nodes that do not output `p`. If such a path exists, then `p` is a potentially unset input for `n`, and the path is one traversal where `p` will not be set. This approach is not efficient if done for every node and input in the workflow.
 
 Another approach is to use data-flow analysis[^data-flow] to determine the set of primitive that are guaranteed to be assigned before the entry point of every node. We can perform a forward analysis starting with the empty set at the source. We define a transfer function for each node where the exit set is the union of the entry set and the node's output primitives. We also define a meet operation that combines the exit sets of predecessors by computing their intersection. Potentially unset inputs can be determined by computing the set difference between a node's input primitives and the guaranteed-assigned primitives before the entry point of that node.
 
@@ -121,7 +121,7 @@ flowchart LR
 
 In the example above, `p3` is an unused since there are no nodes after `C` which has `p3` as an input. `p2` is also unused from `A` because it is overwritten by `C` and `D` prior to its first use in `E`. We define an output `p` as potentially used from node `n` if there is a path from `n` to the sink (assuming that the sink is always reachable from every node) where `p` is used as an input prior to reassignment.
 
-We can use depth-first search starting from `n` considering only simple paths. We ignore the successors of any nodes where `p` is set as an output since it would indicate that `p` is reassigned. If we encounter any node where `p` is used as an input, exit immediately because we know that `p` is potentially used. After the search terminates and has visited all reachable nodes starting from `n` without finding a node that uses `p`, we can assert that `p` is unused from `n`.
+We can use depth-first search starting from `n`. We ignore the successors of any nodes where `p` is set as an output since it would indicate that `p` is reassigned. If we encounter any node where `p` is used as an input, exit immediately because we know that `p` is potentially used. After the search terminates and has visited all reachable nodes starting from `n` without finding a node that uses `p`, we can assert that `p` is unused from `n`.
 
 Data-flow analysis can also be used to determine the set of primitives that are potentially used after the exit point of each node. This is the same problem as live variable analysis[^liveness] with use/def of variables corresponding to inputs/outputs of nodes. Once the live variables are obtained for each node, unused outputs can be determined by computing the set difference between a node's output primitives and the potentially-used primitives after the exit point of that node.
 
@@ -147,6 +147,29 @@ Unreachable nodes can be found by performing depth-first search starting from th
 We can do slightly better if we are able to prove that certain switch branches are never taken. However, due to the lack of node introspection, we can only assert basic properties such as whether a primitive is definitely not set. To do this, we can examine the transpose graph and use depth-first search to verify that no visited nodes output the given primitive.
 
 ### Infinite Loops
+
+There are cases where an infinite loop can be introduced in a workflow. In general, we cannot determine whether a cycle in the graph will terminate, but we can determine if a cycle will never be able to reach the sink. There are runtime limits on the total number of visits to a node in a given session, but we would like to detect some infinite loops statically.
+
+{% raw %}
+<div class="mermaid">
+flowchart LR
+    Source([Source]) --> A
+    A --> B{{B}}
+    B --> C
+    C --> Sink([Sink])
+    B --> D{{D}}
+    D --> A
+    D --> E{{E}}
+    E --> F
+    F --> G
+    G --> E
+</div>
+{% endraw %}
+
+In the example above, the cycle formed by `A`, `B`, `D` could be an infinite loop, but we cannot be sure because it is possible for the edge from `B` to `C` to be taken at some point. However, the cycle formed by `E`, `F`, `G` is a provable infinite loop because there is no way to reach the sink once the traversal hits one of these nodes. 
+
+We can perform depth-first search from every node to see if there is a path to the sink, but it is more efficient to perform a single search starting from the sink in the transpose graph. Any nodes that are not marked are either unreachable from the source or are participating in cycles that cannot reach the sink.
+
 
 ## Workflow Transpilation
 
