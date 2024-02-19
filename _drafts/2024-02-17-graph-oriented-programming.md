@@ -32,7 +32,7 @@ Some nodes can read or write to session state through predefined primitives, whi
 - Processor: This node type is used to run arbitrary business logic. It allows zero or more input and output primitives. A processor can mutate global system state (e.g., performing database writes) in addition to the session state.
 - Sink: This is a special node type that indicates to the framework that a workflow is complete. There may be more than one sink node with different designations to indicate to the framework what type of exit was taken.
 - Source: This is a special node type that is used to mark the start of the workflow. The framework will always begin executing a workflow form the source node.
-- Switch: This node type is used to handle conditional behavior in a workflow. It accepts exactly one input primitive and does not output anything. The framework will match the primitive's value against each of the switch's case values and select an edge to traverse.
+- Switch: This node type is used to handle conditional behavior in a workflow. It accepts exactly one input primitive and does not output anything. The framework will match the primitive's value against each of the switch's case values and select an edge to traverse. Each switch is required to have a default case.
 
 Workflow are stored in JSON format. An example is shown below. However, while this representation is easy for the framework to load and interpret, it is fairly difficult for developers to edit directly. Instead, we rely on a visual workflow editor that converts the JSON to a graph representation and allows developers to work through the visual representation instead. 
 
