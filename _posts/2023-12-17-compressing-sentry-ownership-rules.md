@@ -2,6 +2,7 @@
 layout: post
 title: "Compressing Sentry Ownership Rules"
 date: 2023-12-17
+features: [highlight]
 ---
 
 I had to solve a fun problem at work related to Sentry's ownership rules because my changes put us over the character limit. It felt very much like an interview problem. However, I think the ideal implementation is not one which has the optimal time complexity or compression ratio.

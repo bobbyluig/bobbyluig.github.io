@@ -2,6 +2,7 @@
 layout: post
 title: "Interesting Magic Squares"
 date: 2023-10-23
+features: [highlight, mathjax]
 ---
 
 Earlier this year, I visited Barcelona for the first time and saw the magic square on the Sagrada Familia. Unlike a normal 4×4 magic square, this one has a magic constant of 33 and a total of 310 combinations that add up to the magic constant. I wanted to know if there were other magic squares that had even more interesting properties given similar constraints.

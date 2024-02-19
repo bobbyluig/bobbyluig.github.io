@@ -2,6 +2,7 @@
 layout: post
 title: "Adventures with Aurora (Part 2)"
 date: 2022-12-30
+features: [highlight, mathjax]
 ---
 
 When we left off, we had two failed attempts at resolving Aurora MySQL I/O issues by tuning database parameters. We also managed to stumble on a 10-year-old deadlock bug in MySQL 5.6. Rather than continuing to explore risky database-level changes, we turned our attention to the application.

@@ -2,6 +2,7 @@
 layout: post
 title: "Memory Fragmentation in Go"
 date: 2023-12-29
+features: [highlight]
 ---
 
 Inspired by a seemingly unexplainable out of memory error in a service, I set out to understand how Go's non-moving memory management works under the hood. This led to some interesting learnings about memory fragmentation, the types of workloads that are prone to this issue, and potential mitigations.

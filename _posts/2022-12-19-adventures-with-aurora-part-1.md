@@ -2,6 +2,7 @@
 layout: post
 title: "Adventures with Aurora (Part 1)"
 date: 2022-12-19
+features: [highlight, mathjax]
 ---
 
 I have been battling with an Aurora MySQL database at work for the past few months. As a result, I learned a lot about the internals of MySQL and how to debug database-related issues. In this three-part series, I wanted to share some of the challenges that we encountered and how we solved them.
