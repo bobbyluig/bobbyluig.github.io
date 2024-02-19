@@ -15,10 +15,11 @@ The domain-specific language was designed to facilitate building workflows in a 
 <div class="mermaid">
 flowchart LR
     Source([Source]) --> Pane[/Pane/]
-    Pane --> Processor[Processor]
+    Pane -->|Action 1| Processor[Processor]
     Processor --> Switch{{Switch}}
     Switch -->|Case 1| Pane
     Switch -->|Case 2| Sink([Sink])
+    Pane -->|Action 2| Sink
 </div>
 {% endraw %}
 
@@ -28,7 +29,7 @@ Some nodes can read or write to session state through predefined primitives, whi
 
  We describe each of the node types in more detail.
 
-- Pane: This node type is used to display information to users or retrieve user input. It allows zero or more input and output primitives. Generally, a pane can read global system state but not mutate it. All outputs should be written to the session state.
+- Pane: This node type is used to display information to users or retrieve user input. It allows zero or more input and output primitives. Generally, a pane can read global system state but not mutate it. All outputs should be written to the session state. A pane can have different output types depending on the action that is taken (e.g, the submit and exit buttons may have different outputs).
 - Processor: This node type is used to run arbitrary business logic. It allows zero or more input and output primitives. A processor can mutate global system state (e.g., performing database writes) in addition to the session state.
 - Sink: This is a special node type that indicates to the framework that a workflow is complete. There may be more than one sink node with different designations to indicate to the framework what type of exit was taken.
 - Source: This is a special node type that is used to mark the start of the workflow. The framework will always begin executing a workflow form the source node.
@@ -170,8 +171,80 @@ In the example above, the cycle formed by `A`, `B`, `D` could be an infinite loo
 
 We can perform depth-first search from every node to see if there is a path to the sink, but it is more efficient to perform a single search starting from the sink in the transpose graph. Any nodes that are not marked are either unreachable from the source or are participating in cycles that cannot reach the sink.
 
-
 ## Workflow Transpilation
+
+Over time, the largest workflows have grown to hundreds of nodes and thousands of edges. While we do have a visual workflow editor, we still found it increasingly difficult to understand workflows. Developer efficiency was negatively impacted, and engineers avoided editing the workflow whenever possible. We think there were a variety of causes that contributed to this.
+
+- There was no integration with the rest of the codebase. For example, navigating from a processor to its underlying implementation was a multi-step process that involved searching for the name of the processor in the IDE.
+- The inputs and outputs of a node were not clearly specified. It was difficult to see how data flowed through a workflow.
+- Due to limitations in the workflow editor, switch cases on enums used numbers instead of named representations, which made it very difficult to determine what the cases actually were.
+- The speed of the workflow editor on large graphs made editing and navigation cumbersome. It could take more than a second for some changes to be displayed. Redesigning the editor to have better performance would take substantial engineering investment.
+- Reviewing workflow changes was difficult due to the JSON representation. PRs often had images attached to show relevant routing changes, but it was easy for those images to be out of date or not comprehensive.
+
+To address these issues, we created a tool to transpile workflows into compilable (but not necessarily executable) Go code. By choosing a good representation, we can leverage existing IDE capabilities for navigation and analysis. We model each node as a function, and edges are encoded as function calls. This inverts how we perceive a workflow. Instead of the framework invoking nodes, the nodes will invoke virtual framework functions and handle their own control flow explicitly.
+
+```go
+// Framework represents the workflow framework and contains various helper functions
+// that nodes can use to interact with the state or run node logic.
+var Framework struct {
+	State     State
+	Pane      func(input any, renderFn any) (action string, output any)
+	Processor func(input any, processorFn any) (output any)
+}
+
+// State contains all primitives that are used as inputs or outputs of any node.
+type State struct {
+    Authenticated *primitives.Authenticated
+    Credentials   *primitives.Credentials
+}
+
+// id: get_credentials_pane
+func Pane_GetCredentials() {
+    input := &panes.CredentialsPane_Input{}
+    renderFn := (*panes.CredentialsPane).Render
+    action, output := Framework.Pane(input, renderFn)
+    switch action {
+    case "Exit":
+        // Call function to go to the exit sink node. 
+    case "Submit":
+        output := output.(*panes.CredentialsPane_Actions_Submit_Output)
+        Framework.State.Credentials = output.Credentials
+        Processor_CheckCredentials()
+    }
+}
+
+// id: check_credentials_processor
+func Processor_CheckCredentials() {
+    input := &processors.CheckCredentialsProcessor_Input{
+        Credentials: Framework.State.Credentials,
+    }
+    processFn := (*processors.CheckCredentialsProcessor)
+    output := Framework.Processor(input, processFn).
+        (*processors.CheckCredentialsProcessor_Output)
+    Framework.State.Authenticated = output.Authenticated
+    Switch_IsAuthenticated()
+}
+
+// id: is_authenticated_switch
+func Switch_IsAuthenticated() {
+    switch Framework.State.Authenticated.IsAuthenticated {
+    case true:
+        // Call function to go to the next node.
+    default:
+        Pane_GetCredentials()
+    }
+}
+```
+
+The code above shows an example output of workflow transpilation where the user is asked to input their credentials for validation. The IDs of nodes are annotated above each function to allow for easy lookup. The function names are derived from the description of nodes. Processors and panes can invoke the corresponding framework functions to run logic associated with the nodes. Input primitives are explicitly defined in each function, and output primitives are explicitly written into the state one field at a time after the node's logic runs. Switches directly access the framework state variables. We ensure that the transpiled code is stable to allow diffing (i.e., switch cases and functions are always ordered in a consistent manner).
+
+We currently expose a command line tool for transpiling all workflows, but hope to integrate it as part of the build and lint process so that transpiled code is kept up to date in the repository. There are various benefits of this representation, especially if transpilation is automated.
+
+- It is possible to quickly navigate to the next node or find all callers of a given node since each node is just a function.
+- Data-flow analysis (including nested primitive fields) is now easy to perform with the IDE. Reads and writes for any field can be shown for the entire repository.
+- Navigating to the underlying implementation for processors or panes can be done with one click while exploring a workflow.
+- Processor and pane usages can be tracked across workflows. Previously, this was difficult to do since there was no repository integration.
+- Workflow changes are now easier to diff since the transpiled output is easier to understand and explore in the IDE compared to the JSON representation.
 
 ## Refactoring with Subgraphs
 
