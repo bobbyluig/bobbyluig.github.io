@@ -2,10 +2,10 @@
 layout: post
 title: "Graph-Oriented Programming"
 date: 2024-02-19
-features: [highlight, mathjax, mermaid]
+features: [highlight, mermaid]
 ---
 
-I have recently been developing with a graph-based domain-specific language at work that powers most of the user onboarding flows. It was created in-house and has evolved over the years. I wanted to share some interesting learnings about the language itself as well as improvements that we made to improve developer efficiency and language safety.
+I have recently been developing in a graph-based domain-specific language at work that powers most of the user onboarding flows. It was created in-house and has evolved over the years. I wanted to share some interesting learnings about the language itself as well as improvements that we made to enhance developer efficiency and language safety.
 
 ## Language and Framework
 
