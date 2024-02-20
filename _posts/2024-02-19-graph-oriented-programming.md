@@ -218,7 +218,7 @@ func Processor_CheckCredentials() {
     input := &processors.CheckCredentialsProcessor_Input{
         Credentials: Framework.State.Credentials,
     }
-    processFn := (*processors.CheckCredentialsProcessor)
+    processFn := (*processors.CheckCredentialsProcessor).Process
     output := Framework.Processor(input, processFn).
         (*processors.CheckCredentialsProcessor_Output)
     Framework.State.Authenticated = output.Authenticated
