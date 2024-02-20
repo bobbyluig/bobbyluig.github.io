@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Graph-Oriented Programming"
-date: 2024-02-17
+date: 2024-02-19
 features: [highlight, mathjax, mermaid]
 ---
 
@@ -23,19 +23,19 @@ flowchart LR
 </div>
 {% endraw %}
 
-The diagram above shows a very simple workflow that contains the main nodes types in the language. A workflow is a directed but not necessarily acyclic graph starting from a single source node and ending at one or more sink nodes. The framework is responsible for interpreting the workflow and maintaining state for sessions. Each traversal of the graph represents a unique session, and state between workflow sessions are kept separate. However, nodes are free to interact with other services to manipulate global system state outside of the workflow.
+The diagram above shows a very simple workflow that contains the main node types in the language. A workflow is a directed but not necessarily acyclic graph starting from a single source node and ending at one or more sink nodes. The framework is responsible for interpreting the workflow and maintaining state for sessions. Each traversal of the graph represents a unique session, and state between workflow sessions are kept separate. However, nodes are free to interact with other services to manipulate global system state outside of the workflow.
 
 Some nodes can read or write to session state through predefined primitives, which are just protocol buffer object types. Each type effectively operates as a unique variable name. The framework handles populating input primitives before invoking a node and updating the workflow state based on a node's output primitives. This does require that nodes specify input and output primitives, but this is similar to defining the signature for a function.
 
  We describe each of the node types in more detail.
 
-- Pane: This node type is used to display information to users or retrieve user input. It allows zero or more input and output primitives. Generally, a pane can read global system state but not mutate it. All outputs should be written to the session state. A pane can have different output types depending on the action that is taken (e.g, the submit and exit buttons may have different outputs).
+- Pane: This node type is used to display information to users or retrieve user input. It allows zero or more input and output primitives. Generally, a pane can read global system state but not mutate it. All outputs should be written to the session state. A pane can have different output types depending on the action that is taken (e.g., the submit and exit buttons may have different outputs).
 - Processor: This node type is used to run arbitrary business logic. It allows zero or more input and output primitives. A processor can mutate global system state (e.g., performing database writes) in addition to the session state.
 - Sink: This is a special node type that indicates to the framework that a workflow is complete. There may be more than one sink node with different designations to indicate to the framework what type of exit was taken.
-- Source: This is a special node type that is used to mark the start of the workflow. The framework will always begin executing a workflow form the source node.
+- Source: This is a special node type that is used to mark the start of the workflow. The framework will always begin executing a workflow from the source node.
 - Switch: This node type is used to handle conditional behavior in a workflow. It accepts exactly one input primitive and does not output anything. The framework will match the primitive's value against each of the switch's case values and select an edge to traverse. Each switch is required to have a default case.
 
-Workflow are stored in JSON format. An example is shown below. However, while this representation is easy for the framework to load and interpret, it is fairly difficult for developers to edit directly. Instead, we rely on a visual workflow editor that converts the JSON to a graph representation and allows developers to work through the visual representation instead. 
+Workflows are stored in JSON format. An example is shown below. However, while this representation is easy for the framework to load and interpret, it is fairly difficult for developers to edit directly. Instead, we rely on a visual workflow editor that converts the JSON to a graph representation and allows developers to work through the visual representation instead. 
 
 ```json
 {
@@ -82,7 +82,7 @@ Static analysis can be performed on a workflow before it is published to minimiz
 
 ### Unset Inputs
 
-One runtime error that can occur is when a node specifies an input primitive that has never been set in the session. Due to branching behavior introduced switches, it is also possible that only some paths to a node will leave an input primitive unset. To avoid these issues, we want to warn developers when a node has an input that is not guaranteed to have been set.
+One runtime error that can occur is when a node specifies an input primitive that has never been set in the session. Due to branching behavior introduced by switches, it is also possible that only some paths to a node will leave an input primitive unset. To avoid these issues, we want to warn developers when a node has an input that is not guaranteed to have been set.
 
 {% raw %}
 <div class="mermaid">
@@ -105,7 +105,7 @@ Another approach is to use data-flow analysis[^data-flow] to determine the set o
 
 ### Unused Outputs
 
-A node can set an output primitive that will never be used by another node. This does not cause any runtime errors, but could indicate that the developer forgot to add new nodes or additional inputs to existing nodes. It is also possible to the output primitive of a node to be ineffective in that it will be overwritten by the output of another node prior to its first use. We want to avoid both of these cases because polluting the session state increases the likelihood of bugs.
+A node can set an output primitive that will never be used by another node. This does not cause any runtime errors, but could indicate that the developer forgot to add new nodes or additional inputs to existing nodes. It is also possible for the output primitive of a node to be ineffective in that it will be overwritten by the output of another node prior to its first use. We want to avoid both of these cases because polluting the session state increases the likelihood of bugs.
 
 {% raw %}
 <div class="mermaid">
@@ -120,7 +120,7 @@ flowchart LR
 </div>
 {% endraw %}
 
-In the example above, `p3` is an unused since there are no nodes after `C` which has `p3` as an input. `p2` is also unused from `A` because it is overwritten by `C` and `D` prior to its first use in `E`. We define an output `p` as potentially used from node `n` if there is a path from `n` to the sink (assuming that the sink is always reachable from every node) where `p` is used as an input prior to reassignment.
+In the example above, `p3` is unused since there are no nodes after `C` which has `p3` as an input. `p2` is also unused from `A` because it is overwritten by `C` and `D` prior to its first use in `E`. We define an output `p` as potentially used from node `n` if there is a path from `n` to the sink (assuming that the sink is always reachable from every node) where `p` is used as an input prior to reassignment.
 
 We can use depth-first search starting from `n`. We ignore the successors of any nodes where `p` is set as an output since it would indicate that `p` is reassigned. If we encounter any node where `p` is used as an input, exit immediately because we know that `p` is potentially used. After the search terminates and has visited all reachable nodes starting from `n` without finding a node that uses `p`, we can assert that `p` is unused from `n`.
 
@@ -128,7 +128,7 @@ Data-flow analysis can also be used to determine the set of primitives that are 
 
 ### Unreachable Nodes
 
-If a node is not reachable from the source, then it will never be executed and we should not include it in the workflow. This usually happens when new nodes are added to a workflow but are not connected to the remainder of the workflow correctly.
+If a node is not reachable from the source, then it will never be executed, and we should not include it in the workflow. This usually happens when new nodes are added to a workflow but are not connected to the remainder of the workflow correctly.
 
 {% raw %}
 <div class="mermaid">
@@ -143,7 +143,7 @@ flowchart LR
 </div>
 {% endraw %}
 
-Unreachable nodes can be found by performing depth-first search starting from the source. All reachable nodes will be marked by the search. Any remaining nodes are guaranteed to be unreachable. In the example above, nodes `C`, `D`, and `E` are unreachable. Note that it is not enough to just validate that each node has an input edge since cycles are permitted.
+Unreachable nodes can be found by performing depth-first search starting from the source. All reachable nodes will be marked by the search. Any remaining nodes are guaranteed to be unreachable. In the example above, nodes `C`, `D`, `E` are unreachable. Note that it is not enough to just validate that each node has an input edge since cycles are permitted.
 
 We can do slightly better if we are able to prove that certain switch branches are never taken. However, due to the lack of node introspection, we can only assert basic properties such as whether a primitive is definitely not set. To do this, we can examine the transpose graph and use depth-first search to verify that no visited nodes output the given primitive.
 
@@ -246,7 +246,37 @@ We currently expose a command line tool for transpiling all workflows, but hope 
 - Processor and pane usages can be tracked across workflows. Previously, this was difficult to do since there was no repository integration.
 - Workflow changes are now easier to diff since the transpiled output is easier to understand and explore in the IDE compared to the JSON representation.
 
+Note that the resulting Go code is not designed to be transpiled back into the JSON format, although we are considering moving away from the JSON format entirely in favor of a builder pattern in Go. However, there are tradeoffs between representations that are easy for humans to understand versus easy for machines to parse and compile. We think that there will still be merits to the transpiled representation even if the underlying language representation is changed.
+
 ## Refactoring with Subgraphs
+
+Recently, we realized that there was no way to compose nodes into reusable components. As a result, two undesirable properties emerged. First, groups of nodes were duplicated in workflows. This meant that subtle bugs could emerge if changes were introduced in one part of the workflow that were not reflected in duplicated node groups. Second, in an effort to not duplicate nodes, processors became increasingly overloaded with branching behavior. This made it hard to statically validate routing since switches were scattered everywhere, each with many cases to consider.
+
+We introduced the concept of a subgraph in the language. A subgraph is a collection of nodes similar to a workflow with one source and one or more sinks. At runtime, the subgraph effectively behaves as if the nodes inside it were copied over to every usage. The source and sink nodes of a subgraph only exist for routing and logging purposes. Subgraphs allowed teams to build out reusable components and be confident that changes would be propagated to all usages in different workflows.
+
+{% raw %}
+<div class="mermaid">
+flowchart LR
+    subgraph Subgraph
+        B --> C{{C}}
+        C --> D
+    end
+    Source([Source]) --> A
+    A --> B
+    C --> Sink([Sink])
+    D --> E{{E}}
+    E --> Sink
+    E --> C
+</div>
+{% endraw %}
+
+However, refactoring existing workflows to pull out reusable subgraphs is still challenging due to the sheer complexity of these graphs. Our team was tasked with pulling out user authentication into a subgraph since it is shared across multiple workflows and would allow the existing workflows to be wired up in a more understandable way. The example above shows a very simple workflow with a subgraph containing multiple exit edges (corresponding to sinks in the subgraph). If we are able to build a subgraph, then `B`, `C`, `D` would be collapsed to a single node. In our case, there were around 60 nodes in a workflow containing 450 nodes that we wanted to collapse.
+
+There is a problematic edge in the example subgraph from `E` to `C` because subgraphs can only have one entry point, and `E` points to a node in the middle of the subgraph. This is easy to spot in a small example, but much harder to do in a complex workflow. Given the set of nodes that should be in a subgraph, we need to identify all edges that go from a node outside of the subgraph to a node inside the subgraph which is not connected to the subgraph source node. We then need to reason about these edges individually to remove them or route them to the start of the subgraph.
+
+Another analysis that we want to perform is identifying all nodes that cannot reach any node in the subgraph. We generally do not need to consider these nodes at all while refactoring since they have no impact on the subgraph. This can be done by performing depth-first search in the transpose graph starting from an additional super node that can reach all nodes in the subgraph. Once the search is complete, all unmarked nodes are ones which cannot reach the subgraph.
+
+To perform the actual migration once the subgraph is built, we can place a switch right before the entry point of the subgraph that routes to either the subgraph or the existing expanded nodes in the workflow. After validating that no traffic is flowing through the nodes duplicated by the subgraph, the existing nodes in the workflow can be deleted.
 
 ## References
 
