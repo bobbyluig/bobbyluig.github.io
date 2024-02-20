@@ -35,7 +35,7 @@ Some nodes can read or write to session state through predefined primitives, whi
 - Source: This is a special node type that is used to mark the start of the workflow. The framework will always begin executing a workflow from the source node.
 - Switch: This node type is used to handle conditional behavior in a workflow. It accepts exactly one input primitive and does not output anything. The framework will match the primitive's value against each of the switch's case values and select an edge to traverse. Each switch is required to have a default case.
 
-Workflows are stored in JSON format. An example is shown below. However, while this representation is easy for the framework to load and interpret, it is fairly difficult for developers to edit directly. Instead, we rely on a visual workflow editor that converts the JSON to a graph representation and allows developers to work through the visual representation instead. 
+Workflows are stored in JSON format. An example with some fields omitted is shown below. While this representation is easy for the framework to load and interpret, it is fairly difficult for developers to edit directly. Instead, we rely on a visual workflow editor that converts the JSON to a graph representation and allows developers to work through the visual representation instead. 
 
 ```json
 {
@@ -44,32 +44,28 @@ Workflows are stored in JSON format. An example is shown below. However, while t
             "id": "edge_1",
             "from_node_id": "node_1",
             "to_node_id": "node_2",
-        },
-        /* ... */
+        }
     ],
     "processor_nodes": [
         {
             "id": "node_1",
             "description": "Node 1",
             "outgoing_edge_id": "edge_1",
-            "configuration": { /* ... */ },
-        },
-        /* ... */
+            "configuration": {},
+        }
     ],
     "switch_nodes": [
         {
             "id": "node_2",
             "description": "Node 2",
-            "condition_primitive": { /* ... */ },
+            "condition_primitive": {},
             "cases": [
                 {
                     "value": 1,
                     "outgoing_edge_id": "edge_2",
-                },
-                /* ... */
+                }
             ]
-        },
-        /* ... */
+        }
     ]
 }
 ```
