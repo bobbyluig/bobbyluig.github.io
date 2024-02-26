@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Adventures with Aurora (Part 3)"
+title: "Adventures With Aurora (Part 3)"
 date: 2023-01-08
 features: [highlight]
 ---

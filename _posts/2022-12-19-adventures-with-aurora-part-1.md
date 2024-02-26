@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Adventures with Aurora (Part 1)"
+title: "Adventures With Aurora (Part 1)"
 date: 2022-12-19
 features: [highlight, mathjax]
 ---
