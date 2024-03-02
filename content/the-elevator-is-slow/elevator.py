@@ -1,289 +1,245 @@
 import simpy
-from typing import cast, Any, List, Union, Generator
+from typing import cast, Any, List, Union, Generator, Dict
 import random
+
+k_move: float = 1.0
+k_door: float = 3.0
+k_person: float = 0.5
+k_floors: int = 20
+
+
+class Request:
+    def __init__(self, start: int, end: int) -> None:
+        self.start: int = start
+        self.end: int = end
+
+    def on_wait(self, env: simpy.Environment):
+        print(f'{env.now}: waiting for elevator at floor {self.start}')
+
+    def on_enter(self, env: simpy.Environment):
+        print(f'{env.now}: entering elevator at floor {self.start}')
+
+    def on_exit(self, env: simpy.Environment):
+        print(f'{env.now}: exiting elevator at floor {self.end}')
 
 
 class Elevator:
-    def __init__(self, env: simpy.Environment, floors: int) -> None:
-        """
-        Creates a new elevator.
-        """
-        self._env: simpy.Environment = env
-        self._k_speed: float = 1.0
-        self._k_delay: float = 10.0
-        self._floor: int = 0
-        self._floors: int = floors
-        self._direction: int = 0
-        self._buttons: List[bool] = [False] * self._floors
-        self._events: List[List[simpy.Event]] = [[] for _ in range(self._floors)]
-
-    def press_button(self, floor: int) -> simpy.Event:
-        self._buttons[floor] = True
-        wait_event = self._env.event()
-        self._events[floor].append(wait_event)
-        return wait_event
-    
-    def enter(self) -> simpy.Event:
-        wait_event = self._env.event()
-        self._events[self._floor].append(wait_event)
-        return wait_event
-
-    def move(self, direction: int):
-        self._direction = direction
-        yield self._env.timeout(1 / self._k_speed)
-        self._floor += self._direction
-
-    def stop(self):
-        self._direction = 0
-
-    def floor(self):
-        return self._floor
-
-    def direction(self):
-        return self._direction
-    
-    def flip_direction(self):
-        self._direction *= -1
-    
-    def open_close_doors(self):
-        self._buttons[self._floor] = False
-        yield self._env.timeout(self._k_delay / 2)
-        for event in self._events[self._floor]:
-            event.succeed()
-        self._events[self._floor] = []
-        yield self._env.timeout(self._k_delay / 2)
+    def __init__(self) -> None:
+        self.open: bool = False
+        self.floor: int = 0
+        self.direction: int = 0
+        self.buttons: List[bool] = [False for _ in range(k_floors)]
+        self.requests: List[List[Request]] = [[] for _ in range(k_floors)]
 
     def next_floor_above(self) -> Union[int, None]:
-        """
-        Returns the first floor where the button pressed is equal or above the specified floor.
-        """
-        for test_floor in range(self._floor, self._floors):
-            if self._buttons[test_floor]:
+        for test_floor in range(self.floor, k_floors):
+            if self.buttons[test_floor]:
                 return test_floor
         return None
 
     def next_floor_below(self) -> Union[int, None]:
-        """
-        Returns the first floor where the button is pressed equal or below the specified floor.
-        """
-        for test_floor in reversed(range(self._floor + 1)):
-            if self._buttons[test_floor]:
+        for test_floor in reversed(range(self.floor + 1)):
+            if self.buttons[test_floor]:
                 return test_floor
         return None
 
 
 class Building:
-    def __init__(
-        self, env: simpy.Environment, floors: int, elevators: List[Elevator]
-    ) -> None:
-        """
-        Creates a new building with the specified number of floors and elevators.
-        """
-        self._env: simpy.Environment = env
-        self._floors: int = floors
-        self._up_buttons: List[bool] = [False] * self._floors
-        self._down_buttons: List[bool] = [False] * self._floors
-        self._elevators: List[Elevator] = elevators
-        self._wake_event: simpy.Event = self._env.event()
-        self._up_events: List[List[simpy.Event]] = [[] for _ in range(self._floors)]
-        self._down_events: List[List[simpy.Event]] = [[] for _ in range(self._floors)]
-
-    def run(self):
-        while True:
-            elevator = self._elevators[0]
-
-            next_elevator_floor_above = elevator.next_floor_above()
-            next_elevator_floor_below = elevator.next_floor_below()
-            next_building_floor_above = self.next_floor_above(elevator.floor())
-            next_building_floor_below = self.next_floor_below(elevator.floor())
-            any_up_floor = self.next_floor_above(0)
-            any_down_floor = self.next_floor_below(self._floors - 1)
-
-            floor = None
-
-            if elevator.direction() >= 0:
-                if (
-                    next_elevator_floor_above is not None
-                    and next_building_floor_above is not None
-                ):
-                    floor = min(next_elevator_floor_above, next_building_floor_above)
-                elif next_elevator_floor_above is not None:
-                    floor = next_elevator_floor_above
-                elif next_building_floor_above is not None:
-                    floor = next_building_floor_above
-            elif elevator.direction() <= 0:
-                if (
-                    next_elevator_floor_below is not None
-                    and next_building_floor_below is not None
-                ):
-                    floor = max(next_elevator_floor_below, next_building_floor_below)
-                elif next_elevator_floor_below is not None:
-                    floor = next_elevator_floor_below
-                elif next_building_floor_below is not None:
-                    floor = next_building_floor_below
-
-            if floor is None:
-                if any_up_floor is not None and any_down_floor is not None:
-                    floor = max(any_up_floor, any_down_floor)
-                elif any_up_floor is not None:
-                    floor = any_up_floor
-                elif any_down_floor is not None:
-                    floor = any_down_floor
-
-            if elevator.floor() == floor:
-                if elevator.direction() >= 0:
-                    if (
-                        next_building_floor_above is not None
-                        or next_elevator_floor_above is not None
-                    ):
-                        self.arrive_up(elevator, elevator.floor())
-                    else:
-                        elevator.flip_direction()
-                        self.arrive_down(elevator, elevator.floor())
-                elif elevator.direction() <= 0:
-                    if (
-                        next_building_floor_below is not None
-                        or next_elevator_floor_below is not None
-                    ):
-                        self.arrive_down(elevator, elevator.floor())
-                    else:
-                        elevator.flip_direction()
-                        self.arrive_up(elevator, elevator.floor())
-                yield self._env.process(elevator.open_close_doors())
-            elif floor is not None:
-                direction = 1 if elevator.floor() < floor else -1
-                yield self._env.process(elevator.move(direction))
-            else:
-                elevator.stop()
-                yield self._wake_event
-
-    def floors(self) -> int:
-        """
-        Returns the number of floors in the building.
-        """
-        return self._floors
-
-    def press_up_button(self, floor: int) -> simpy.Event:
-        """
-        Presses the up button for the floor.
-        """
-        self._up_buttons[floor] = True
-        wait_event = self._env.event()
-        self._up_events[floor].append(wait_event)
-        self._wake_event.succeed()
-        self._wake_event = self._env.event()
-        return wait_event
-
-    def press_down_button(self, floor: int) -> simpy.Event:
-        """
-        Presses the down button for the floor.
-        """
-        wait_event = self._env.event()
-        self._down_buttons[floor] = True
-        self._down_events[floor].append(wait_event)
-        self._wake_event.succeed()
-        self._wake_event = self._env.event()
-        return wait_event
-
-    def arrive_up(self, elevator: Elevator, floor: int) -> None:
-        """
-        Indicates an elevator arrived at the floor going up.
-        """
-        self._up_buttons[floor] = False
-        for event in self._up_events[floor]:
-            event.succeed(elevator)
-        self._up_events[floor] = []
-
-    def arrive_down(self, elevator: Elevator, floor: int) -> None:
-        """
-        Indicates an elevator arrived at the floor going down.
-        """
-        self._down_buttons[floor] = False
-        for event in self._down_events[floor]:
-            event.succeed(elevator)
-        self._down_events[floor] = []
+    def __init__(self) -> None:
+        self.up_buttons: List[bool] = [False for _ in range(k_floors)]
+        self.down_buttons: List[bool] = [False for _ in range(k_floors)]
+        self.up_requests: List[List[Request]] = [[] for _ in range(k_floors)]
+        self.down_requests: List[List[Request]] = [[] for _ in range(k_floors)]
 
     def next_floor_above(self, floor: int) -> Union[int, None]:
-        """
-        Returns the first floor where the up button pressed is equal or above the specified floor.
-        """
-        for test_floor in range(floor, self._floors):
-            if self._up_buttons[test_floor]:
+        for test_floor in range(floor, k_floors):
+            if self.up_buttons[test_floor]:
                 return test_floor
         return None
 
     def next_floor_below(self, floor: int) -> Union[int, None]:
-        """
-        Returns the first floor where the down button is pressed equal or below the specified floor.
-        """
         for test_floor in reversed(range(floor + 1)):
-            if self._down_buttons[test_floor]:
+            if self.down_buttons[test_floor]:
                 return test_floor
         return None
 
 
-class Monitor:
-    def __init__(self) -> None:
-        self._values: List[float] = []
-
-    def mean(self):
-        return sum(self._values) / len(self._values)
-    
-    def track(self, value):
-        self._values.append(value)
-
-
-class Request:
+class Controller:
     def __init__(
-        self, env: simpy.Environment, building: Building, monitor: Monitor, start: int, end: int
+        self, env: simpy.Environment, building: Building, elevators: List[Elevator]
     ) -> None:
-        self._env: simpy.Environment = env
-        self._building: Building = building
-        self._start: int = start
-        self._end: int = end
-        self._name = random.randint(0, 999999999999)
-        self._monitor = monitor
+        self.env: simpy.Environment = env
+        self.building: Building = building
+        self.elevators: List[Elevator] = elevators
+        self.wake_events: List[simpy.Event] = [
+            self.env.event() for _ in range(len(self.elevators))
+        ]
 
-    def run(self):
-        start_time = self._env.now
-        print(f"r{self._name}, t{self._env.now}: waiting for elevator.")
+    def new_request(self, request: Request):
+        direction = 1 if request.end > request.start else -1
 
-        elevator_event = (
-            self._building.press_up_button(self._start)
-            if self._start < self._end
-            else self._building.press_down_button(self._start)
+        if direction > 0:
+            building_buttons = self.building.up_buttons
+            building_requests = self.building.up_requests
+        else:
+            building_buttons = self.building.down_buttons
+            building_requests = self.building.down_requests
+
+        needs_button = True
+        for elevator in self.elevators:
+            if (
+                elevator.floor == request.start
+                and elevator.direction == direction
+                and elevator.open
+            ):
+                needs_button = False
+                break
+
+        building_requests[request.start].append(request)
+        if needs_button:
+            building_buttons[request.start] = True
+
+        request.on_wait(self.env)
+
+        for i, wake_event in enumerate(self.wake_events):
+            wake_event.succeed()
+            self.wake_events[i] = self.env.event()
+
+    def arrive(self, elevator_index: int):
+        elevator = self.elevators[elevator_index]
+        elevator.buttons[elevator.floor] = False
+        
+        if elevator.direction > 0 and self.next_floor_above(elevator_index) is None:
+            elevator.direction = -1
+        elif elevator.direction < 0 and self.next_floor_below(elevator_index) is None:
+            elevator.direction = 1
+
+        print(f'{env.now}: elevator arriving at {elevator.floor} going {elevator.direction}')
+
+        if elevator.direction > 0:
+            building_buttons = self.building.up_buttons
+            building_requests = self.building.up_requests
+        else:
+            building_buttons = self.building.down_buttons
+            building_requests = self.building.down_requests
+
+  
+        building_buttons[elevator.floor] = False
+
+        yield self.env.timeout(k_door)
+        elevator.open = True
+
+        while elevator.requests[elevator.floor]:
+            yield self.env.timeout(k_person)
+            request = elevator.requests[elevator.floor].pop()
+            request.on_exit(self.env)
+
+        while building_requests[elevator.floor]:
+            yield self.env.timeout(k_person)
+            request = building_requests[elevator.floor].pop(0)
+            elevator.requests[request.end].append(request)
+            elevator.buttons[request.end] = True
+            request.on_enter(self.env)
+
+        elevator.open = False
+        yield self.env.timeout(k_door)
+
+    def next_floor_above(self, elevator_index: int):
+        elevator = self.elevators[elevator_index]
+        return min(
+            (
+                floor
+                for floor in (
+                    elevator.next_floor_above(),
+                    self.building.next_floor_above(elevator.floor),
+                )
+                if floor is not None
+            ),
+            default=None,
         )
-        yield elevator_event
-        print(f"r{self._name}, t{self._env.now}: elevator arrived at floor {self._start}.")
 
-        elevator: Elevator = cast(Elevator, elevator_event.value)
-        yield elevator.enter()
-        print(f"r{self._name}, t{self._env.now}: entered elevator at floor {self._start}.")
+    def next_floor_below(self, elevator_index: int):
+        elevator = self.elevators[elevator_index]
+        return max(
+            (
+                floor
+                for floor in (
+                    elevator.next_floor_below(),
+                    self.building.next_floor_below(elevator.floor),
+                )
+                if floor is not None
+            ),
+            default=None,
+        )
 
-        yield elevator.press_button(self._end)
-        print(f"r{self._name}, t{self._env.now}: elevator arrived at floor {self._end}.")
+    def highest_building_floor_button(self):
+        return max(
+            (
+                floor
+                for floor in (
+                    self.building.next_floor_above(0),
+                    self.building.next_floor_below(k_floors - 1),
+                )
+                if floor is not None
+            ),
+            default=None,
+        )
 
-        self._monitor.track(self._env.now - start_time)
+    def run_elevator(self, elevator_index: int):
+        elevator = self.elevators[elevator_index]
 
+        while True:
+            floor = None
+            if elevator.direction >= 0:
+                floor = self.next_floor_above(elevator_index)
+            else:
+                floor = self.next_floor_below(elevator_index)
+           
+            if floor is None:
+                floor = self.highest_building_floor_button()
+
+            if floor is None:
+                elevator.direction = 0
+                print(f'{env.now}: elevator has no requests')
+                yield self.wake_events[elevator_index]
+                continue
+
+            if elevator.direction == 0:
+                if floor > elevator.floor:
+                    elevator.direction = 1
+                elif floor < elevator.floor:
+                    elevator.direction = -1
+                elif self.building.up_buttons[elevator.floor]:
+                    elevator.direction = 1
+                elif self.building.down_buttons[elevator.floor]:
+                    elevator.direction = -1
+                else:
+                    raise Exception('unreachable')
+
+            if elevator.floor == floor:
+                yield self.env.process(self.arrive(elevator_index))
+                continue
+
+            yield self.env.timeout(k_move)
+            elevator.floor += elevator.direction
+
+
+def requests(env: simpy.Environment, controller: Controller):
+    controller.new_request(Request(0, 1))
+
+    yield env.timeout(100)
+
+    controller.new_request(Request(10, 0))
+    controller.new_request(Request(10, 2))
+    controller.new_request(Request(9, 0))
+    controller.new_request(Request(0, 12))
 
 
 env = simpy.Environment()
+building = Building()
+elevators = [Elevator() for _ in range(1)]
+controller = Controller(env, building, elevators)
 
-elevator = Elevator(env, 20)
-building = Building(env, 20, [elevator])
-monitor = Monitor()
-
-
-def generate_requests(env: simpy.Environment):
-    while True:
-        yield env.timeout(random.randint(0, 30))
-        if random.random() >= 0.5:
-            env.process(Request(env, building, monitor, 0, random.randint(1, 19)).run())
-        else:
-            env.process(Request(env, building, monitor, random.randint(1, 19), 0).run())
-
-env.process(building.run())
-env.process(generate_requests(env))
-env.run(3600 * 24)
-
-print(monitor.mean())
+env.process(controller.run_elevator(0))
+env.process(requests(env, controller))
+env.run()
