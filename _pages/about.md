@@ -4,7 +4,7 @@ layout: page
 title: About
 ---
 
-Hello! I'm Lujing. I currently work as a software engineer at Plaid. I am interested in distributed systems, programming languages, robotics, and reinforcement learning.
+Hello! My name is Lujing. I currently work as a software engineer at Plaid. I am interested in distributed systems, programming languages, robotics, and reinforcement learning.
 
 ## Work Experience
 
