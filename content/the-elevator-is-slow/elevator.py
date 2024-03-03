@@ -3,7 +3,7 @@ from typing import Generator, List, Union
 
 import simpy
 
-k_move: float = 1.0
+k_velocity: float = 1.0
 k_door: float = 3.0
 k_person: float = 0.5
 k_floors: int = 20
@@ -40,6 +40,7 @@ class Elevator:
         self.floor: int = 0
         self.direction: int = 0
         self.count: int = 0
+        self.moving: bool = False
         self.target: Union[int, None] = None
         self.buttons: List[bool] = [False for _ in range(k_floors)]
         self.requests: List[List[Request]] = [[] for _ in range(k_floors)]
@@ -124,6 +125,11 @@ class Controller:
 
     def arrive(self, elevator_index: int):
         elevator = self.elevators[elevator_index]
+
+        if elevator.moving:
+            yield self.env.timeout(k_acceleration)
+            elevator.moving = False
+
         elevator.buttons[elevator.floor] = False
 
         if elevator.direction > 0 and self.next_floor_above(elevator_index) is None:
@@ -218,6 +224,19 @@ class Controller:
             ),
             default=None,
         )
+    
+    def stop_elevator(self, elevator_index: int):
+        elevator = self.elevators[elevator_index]
+        wake_event = self.wake_events[elevator_index]
+
+        if elevator.moving:
+             yield self.env.timeout(k_acceleration)
+
+        elevator.direction = 0
+        elevator.target = None
+        elevator.moving = False
+
+        yield wake_event
 
     def run_elevator(self, elevator_index: int):
         elevator = self.elevators[elevator_index]
@@ -233,10 +252,8 @@ class Controller:
                 floor = self.highest_building_floor_button()
 
             if floor is None:
-                elevator.direction = 0
-                elevator.target = None
                 print(f'{env.now}: elevator {elevator_index} has no requests')
-                yield self.wake_events[elevator_index]
+                yield self.env.process(self.stop_elevator(elevator_index))
                 continue
 
             if elevator.direction == 0 and any(
@@ -244,13 +261,13 @@ class Controller:
                 and other_elevator.target == floor
                 for i, other_elevator in enumerate(self.elevators)
             ):
-                elevator.direction = 0
-                elevator.target = None
                 print(f"{env.now}: elevator {elevator_index} being lazy")
-                yield self.wake_events[elevator_index]
+                yield self.env.process(self.stop_elevator(elevator_index))
                 continue
 
             elevator.target = floor
+
+            previous_direction = elevator.direction
 
             if floor > elevator.floor:
                 elevator.direction = 1
@@ -271,7 +288,14 @@ class Controller:
                 yield self.env.process(self.arrive(elevator_index))
                 continue
 
-            yield self.env.timeout(k_move)
+            if elevator.moving and previous_direction != elevator.direction:
+                assert(abs(previous_direction - elevator.direction) == 2)
+                yield self.env.timeout(2 * k_acceleration)
+            elif not elevator.moving:
+                yield self.env.timeout(k_acceleration)
+                elevator.moving = True
+
+            yield self.env.timeout(k_velocity)
             elevator.floor += elevator.direction
 
 
@@ -288,7 +312,7 @@ def test_requests(env: simpy.Environment, controller: Controller):
 
 def random_requests(env: simpy.Environment, controller: Controller):
     while True:
-        yield env.timeout(random.randint(0, 30))
+        yield env.timeout(random.randint(0, 10))
         if random.randint(0, 1) == 0:
             controller.new_request(Request(0, random.randint(1, 19)))
         else:
@@ -297,7 +321,7 @@ def random_requests(env: simpy.Environment, controller: Controller):
 
 env = simpy.Environment()
 building = Building()
-elevators = [Elevator() for _ in range(10)]
+elevators = [Elevator() for _ in range(2)]
 controller = Controller(env, building, elevators)
 
 for i in range(len(elevators)):
