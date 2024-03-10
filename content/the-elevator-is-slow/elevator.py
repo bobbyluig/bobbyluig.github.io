@@ -152,70 +152,9 @@ class Controller:
 
             return
 
-    def arrive(self, elevator_index: int):
+    def next_scan_up_floor(self, elevator_index: int):
         elevator = self.elevators[elevator_index]
-
-        if elevator.moving:
-            yield self.env.timeout(k_acceleration)
-            elevator.moving = False
-
-        elevator.buttons[elevator.floor] = False
-
-        if elevator.direction > 0 and self.next_floor_above(elevator_index) is None:
-            elevator.direction = -1
-        elif elevator.direction < 0 and self.next_floor_below(elevator_index) is None:
-            elevator.direction = 1
-
-        debug(
-            f'{env.now}: elevator {elevator_index} arriving at {elevator.floor} heading {elevator.direction}'
-        )
-
-        if elevator.direction > 0:
-            building_buttons = self.building.up_buttons
-            building_requests = self.building.up_requests
-        else:
-            building_buttons = self.building.down_buttons
-            building_requests = self.building.down_requests
-
-        building_buttons[elevator.floor] = False
-
-        yield self.env.timeout(k_door)
-        elevator.open = True
-
-        while elevator.requests[elevator.floor]:
-            request = elevator.requests[elevator.floor].pop()
-            yield self.env.timeout(k_person)
-            elevator.count -= 1
-            request.on_exit(self.env)
-            self.times.append(request.end_time - request.start_time)
-
-        while building_requests[elevator.floor] and elevator.count < k_capacity:
-            request = building_requests[elevator.floor].pop(0)
-            yield self.env.timeout(k_person)
-            elevator.requests[request.end].append(request)
-            elevator.buttons[request.end] = True
-            elevator.count += 1
-            request.on_enter(self.env)
-
-        at_capacity = False
-        if building_requests[elevator.floor]:
-            debug(f'{env.now}: elevator {elevator_index} at capacity')
-            at_capacity = True
-
-        elevator.open = False
-        yield self.env.timeout(k_door)
-
-        if at_capacity:
-            floor = elevator.floor
-            building_buttons[floor] = False
-            def skip_floor():
-                yield self.env.timeout(1)
-                building_buttons[floor] = True
-            self.env.process(skip_floor())
-
-    def next_floor_above(self, elevator_index: int):
-        elevator = self.elevators[elevator_index]
-        return min(
+        floor = min(
             (
                 floor
                 for floor in (
@@ -226,10 +165,15 @@ class Controller:
             ),
             default=None,
         )
+        if floor is None:
+            down_floor = self.building.next_floor_below(k_floors - 1)
+            if down_floor is not None and down_floor > elevator.floor:
+                floor = down_floor
+        return floor
 
-    def next_floor_below(self, elevator_index: int):
+    def next_scan_down_floor(self, elevator_index: int):
         elevator = self.elevators[elevator_index]
-        return max(
+        floor = max(
             (
                 floor
                 for floor in (
@@ -240,6 +184,11 @@ class Controller:
             ),
             default=None,
         )
+        if floor is None:
+            up_floor = self.building.next_floor_above(0)
+            if up_floor is not None and up_floor < elevator.floor:
+                floor = up_floor
+        return floor
 
     def closest_floor_with_request(self, elevator_index: int):
         elevator = self.elevators[elevator_index]
@@ -350,17 +299,9 @@ class Controller:
 
         floor = None
         if elevator.direction > 0:
-            floor = self.next_floor_above(elevator_index)
-            if floor is None:
-                down_floor = self.building.next_floor_below(k_floors - 1)
-                if down_floor is not None and down_floor >= elevator.floor:
-                    floor = down_floor
+            floor = self.next_scan_up_floor(elevator_index)
         elif elevator.direction < 0:
-            floor = self.next_floor_below(elevator_index)
-            if floor is None:
-                up_floor = self.building.next_floor_below(0)
-                if up_floor is not None and up_floor <= elevator.floor:
-                    floor = up_floor
+            floor = self.next_scan_down_floor(elevator_index)
 
         if floor is None:
             floor = self.closest_floor_with_request(elevator_index)
@@ -384,9 +325,9 @@ class Controller:
 
         button_pressed = elevator.buttons[elevator.floor]
         elevator.buttons[elevator.floor] = False
-        if elevator.direction > 0 and self.next_floor_above(elevator_index) is None:
+        if elevator.direction > 0 and self.next_scan_up_floor(elevator_index) is None:
             arrive_direction = -1
-        elif elevator.direction < 0 and self.next_floor_below(elevator_index) is None:
+        elif elevator.direction < 0 and self.next_scan_down_floor(elevator_index) is None:
             arrive_direction = 1
         elevator.buttons[elevator.floor] = button_pressed
 
@@ -424,7 +365,8 @@ def test_requests_1(env: simpy.Environment, controller: Controller):
 
 
 def random_requests(env: simpy.Environment, controller: Controller):
-    while True:
+    random.seed(0)
+    for _ in range(50000):
         yield env.timeout(random.randint(0, 30))
         if random.randint(0, 1) == 0:
             controller.new_request(Request(0, random.randint(1, 19)))
@@ -440,7 +382,7 @@ controller = Controller(env, building, elevators)
 for i in range(len(elevators)):
     env.process(controller.run_elevator(i))
 env.process(random_requests(env, controller))
-env.run(3600 * 24 * 7)
+env.run()
 
 print(sum(controller.times) / len(controller.times))
 print(max(controller.times))
