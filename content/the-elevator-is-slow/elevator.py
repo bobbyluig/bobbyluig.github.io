@@ -101,10 +101,10 @@ class Building:
             if self.down_buttons[test_floor]:
                 return test_floor
         return None
-    
+
     def up_floors(self) -> MutableSet[int]:
         return {floor for floor in range(k_floors) if self.up_buttons[floor]}
-    
+
     def down_floors(self) -> MutableSet[int]:
         return {floor for floor in range(k_floors) if self.down_buttons[floor]}
 
@@ -122,48 +122,53 @@ class Controller:
         self.times: List[float] = []
         self.policy: Callable[[int], Action] = self.simple_policy
 
+    def needs_button(self, direction: int, floor: int):
+        if direction > 0:
+            building_buttons = self.building.up_buttons
+        else:
+            building_buttons = self.building.down_buttons
+
+        if building_buttons[floor]:
+            return False
+        
+        for elevator in self.elevators:
+            if (
+                elevator.floor == floor
+                and elevator.arrived
+                and elevator.direction == direction
+            ):
+                return False
+
+        for elevator in self.elevators:
+            if (
+                elevator.floor == floor
+                and elevator.arrived
+                and elevator.direction == 0
+            ):
+                elevator.direction = direction
+                return False
+            
+        return True
+
     def new_request(self, request: Request):
-        while True:
-            direction = 1 if request.end > request.start else -1
+        direction = 1 if request.end > request.start else -1
 
-            if direction > 0:
-                building_buttons = self.building.up_buttons
-                building_requests = self.building.up_requests
-            else:
-                building_buttons = self.building.down_buttons
-                building_requests = self.building.down_requests
+        if direction > 0:
+            building_buttons = self.building.up_buttons
+            building_requests = self.building.up_requests
+        else:
+            building_buttons = self.building.down_buttons
+            building_requests = self.building.down_requests
 
-            needs_button = True
-            for elevator in self.elevators:
-                if (
-                    elevator.floor == request.start
-                    and elevator.arrived
-                    and elevator.direction == direction
-                ):
-                    needs_button = False
-                    break
-            if needs_button:
-                for elevator in self.elevators:
-                    if (
-                        elevator.floor == request.start
-                        and elevator.arrived
-                        and elevator.direction == 0
-                    ):
-                        elevator.direction = direction
-                        needs_button = False
-                        break
+        building_requests[request.start].append(request)
+        if self.needs_button(direction, request.start):
+            building_buttons[request.start] = True
 
-            building_requests[request.start].append(request)
-            if needs_button:
-                building_buttons[request.start] = True
+        request.on_wait(self.env)
 
-            request.on_wait(self.env)
-
-            for i, wake_event in enumerate(self.wake_events):
-                wake_event.succeed()
-                self.wake_events[i] = self.env.event()
-
-            return
+        for i, wake_event in enumerate(self.wake_events):
+            wake_event.succeed()
+            self.wake_events[i] = self.env.event()
 
     def next_scan_up_floor(self, elevator_index: int):
         elevator = self.elevators[elevator_index]
@@ -259,7 +264,7 @@ class Controller:
             building_buttons = self.building.down_buttons
             building_requests = self.building.down_requests
 
-        assert(not building_buttons[elevator.floor])
+        assert not building_buttons[elevator.floor]
 
         while building_requests[elevator.floor] and elevator.count < k_capacity:
             request = building_requests[elevator.floor].pop(0)
@@ -279,10 +284,11 @@ class Controller:
 
         if at_capacity:
             floor = elevator.floor
-            building_buttons[floor] = False
+            direction = 1 if elevator.direction > 0 else -1
             def skip_floor():
                 yield self.env.timeout(1)
-                building_buttons[floor] = True
+                building_buttons[floor] = self.needs_button(direction, floor)
+                debug(f'{env.now}: re-pressing button on floor {floor}')
             self.env.process(skip_floor())
 
     def action_move(self, elevator_index: int, action: Action_Move):
@@ -302,7 +308,7 @@ class Controller:
             elevator.direction = -1
 
         if elevator.moving and previous_direction != elevator.direction:
-            assert(abs(previous_direction - elevator.direction) == 2)
+            assert abs(previous_direction - elevator.direction) == 2
             yield self.env.timeout(2 * k_acceleration)
         elif not elevator.moving:
             yield self.env.timeout(k_acceleration)
@@ -384,7 +390,7 @@ def test_requests_1(env: simpy.Environment, controller: Controller):
 
 
 def random_requests(env: simpy.Environment, controller: Controller):
-    random.seed(2)
+    random.seed(1)
     for _ in range(50000):
         yield env.timeout(random.randint(0, 30))
         if random.randint(0, 1) == 0:
