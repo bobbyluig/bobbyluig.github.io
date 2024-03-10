@@ -58,7 +58,7 @@ class Request:
 
 class Elevator:
     def __init__(self) -> None:
-        self.open: bool = False
+        self.arrived: bool = False
         self.floor: int = 0
         self.direction: int = 0
         self.count: int = 0
@@ -78,6 +78,9 @@ class Elevator:
             if self.buttons[test_floor]:
                 return test_floor
         return None
+    
+    def floors(self) -> MutableSet[int]:
+        return {floor for floor in range(k_floors) if self.buttons[floor]}
 
 
 class Building:
@@ -99,10 +102,10 @@ class Building:
                 return test_floor
         return None
     
-    def up_button_floors(self) -> MutableSet[int]:
+    def up_floors(self) -> MutableSet[int]:
         return {floor for floor in range(k_floors) if self.up_buttons[floor]}
     
-    def down_button_floors(self) -> MutableSet[int]:
+    def down_floors(self) -> MutableSet[int]:
         return {floor for floor in range(k_floors) if self.down_buttons[floor]}
 
 
@@ -134,11 +137,21 @@ class Controller:
             for elevator in self.elevators:
                 if (
                     elevator.floor == request.start
+                    and elevator.arrived
                     and elevator.direction == direction
-                    and elevator.open
                 ):
                     needs_button = False
                     break
+            if needs_button:
+                for elevator in self.elevators:
+                    if (
+                        elevator.floor == request.start
+                        and elevator.arrived
+                        and elevator.direction == 0
+                    ):
+                        elevator.direction = direction
+                        needs_button = False
+                        break
 
             building_requests[request.start].append(request)
             if needs_button:
@@ -193,7 +206,7 @@ class Controller:
     def closest_floor_with_request(self, elevator_index: int):
         elevator = self.elevators[elevator_index]
         return min(
-            self.building.up_button_floors() | self.building.down_button_floors(),
+            self.building.up_floors() | self.building.down_floors(),
             key=lambda floor: abs(elevator.floor - floor),
             default=None
         )
@@ -213,17 +226,31 @@ class Controller:
 
     def action_arrive(self, elevator_index: int, action: Action_Arrive):
         elevator = self.elevators[elevator_index]
+        elevator.arrived = True
+        elevator.buttons[elevator.floor] = False
+        elevator.direction = action.direction
+
+        if elevator.direction > 0:
+            self.building.up_buttons[elevator.floor] = False
+        elif elevator.direction < 0:
+            self.building.down_buttons[elevator.floor] = False
+
+        debug(
+            f'{env.now}: elevator {elevator_index} arriving at {elevator.floor} heading {elevator.direction}'
+        )
 
         if elevator.moving:
             yield self.env.timeout(k_acceleration)
             elevator.moving = False
 
-        elevator.buttons[elevator.floor] = False
-        elevator.direction = action.direction
+        yield self.env.timeout(k_door)
 
-        debug(
-            f'{env.now}: elevator {elevator_index} arriving at {elevator.floor} heading {elevator.direction}'
-        )
+        while elevator.requests[elevator.floor]:
+            request = elevator.requests[elevator.floor].pop()
+            yield self.env.timeout(k_person)
+            elevator.count -= 1
+            request.on_exit(self.env)
+            self.times.append(request.end_time - request.start_time)
 
         if elevator.direction > 0:
             building_buttons = self.building.up_buttons
@@ -232,17 +259,8 @@ class Controller:
             building_buttons = self.building.down_buttons
             building_requests = self.building.down_requests
 
-        building_buttons[elevator.floor] = False
-
-        yield self.env.timeout(k_door)
-        elevator.open = True
-
-        while elevator.requests[elevator.floor]:
-            request = elevator.requests[elevator.floor].pop()
-            yield self.env.timeout(k_person)
-            elevator.count -= 1
-            request.on_exit(self.env)
-            self.times.append(request.end_time - request.start_time)
+        if building_buttons[elevator.floor]:
+            building_buttons[elevator.floor] = False
 
         while building_requests[elevator.floor] and elevator.count < k_capacity:
             request = building_requests[elevator.floor].pop(0)
@@ -257,7 +275,7 @@ class Controller:
             debug(f'{env.now}: elevator {elevator_index} at capacity')
             at_capacity = True
 
-        elevator.open = False
+        elevator.arrived = False
         yield self.env.timeout(k_door)
 
         if at_capacity:
@@ -325,7 +343,9 @@ class Controller:
 
         button_pressed = elevator.buttons[elevator.floor]
         elevator.buttons[elevator.floor] = False
-        if elevator.direction > 0 and self.next_scan_up_floor(elevator_index) is None:
+        if len(elevator.floors()) + len(building.up_floors()) + len(building.down_floors()) == 0:
+            arrive_direction = 0
+        elif elevator.direction > 0 and self.next_scan_up_floor(elevator_index) is None:
             arrive_direction = -1
         elif elevator.direction < 0 and self.next_scan_down_floor(elevator_index) is None:
             arrive_direction = 1
@@ -365,7 +385,7 @@ def test_requests_1(env: simpy.Environment, controller: Controller):
 
 
 def random_requests(env: simpy.Environment, controller: Controller):
-    random.seed(0)
+    random.seed(2)
     for _ in range(50000):
         yield env.timeout(random.randint(0, 30))
         if random.randint(0, 1) == 0:
@@ -384,5 +404,6 @@ for i in range(len(elevators)):
 env.process(random_requests(env, controller))
 env.run()
 
-print(sum(controller.times) / len(controller.times))
-print(max(controller.times))
+print(f'requests fulfilled: {len(controller.times)}')
+print(f'mean latency: {sum(controller.times) / len(controller.times)}')
+print(f'max latency: {max(controller.times)}')
