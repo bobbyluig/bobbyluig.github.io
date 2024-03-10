@@ -259,8 +259,7 @@ class Controller:
             building_buttons = self.building.down_buttons
             building_requests = self.building.down_requests
 
-        if building_buttons[elevator.floor]:
-            building_buttons[elevator.floor] = False
+        assert(not building_buttons[elevator.floor])
 
         while building_requests[elevator.floor] and elevator.count < k_capacity:
             request = building_requests[elevator.floor].pop(0)
