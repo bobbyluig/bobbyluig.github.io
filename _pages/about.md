@@ -6,7 +6,7 @@ title: About
 
 Hello! My name is Lujing. I currently work as a software engineer at Plaid. I am interested in distributed systems, programming languages, robotics, and reinforcement learning.
 
-## Work Experience
+## Work
 
 **Software Engineer at Plaid**  
 August 2021 - Present
