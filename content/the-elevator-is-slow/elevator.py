@@ -1,6 +1,6 @@
 import random
 from dataclasses import dataclass
-from typing import Callable, Generator, List, Set, Tuple, Union
+from typing import Callable, List, Set, Tuple, Union
 
 import simpy
 import simpy.events
@@ -396,7 +396,16 @@ class Controller:
             i != elevator_index and other_elevator.target == floor
             for i, other_elevator in enumerate(self.elevators)
         ):
-            debug(self.env, f"elevator {elevator_index} being lazy")
+            debug(self.env, f"elevator {elevator_index} being lazy (already targeted)")
+            return Action_Stop()
+
+        if elevator.direction == 0 and any(
+            i != elevator_index
+            and other_elevator.direction == 0
+            and abs(other_elevator.floor - floor) < abs(elevator.floor - floor)
+            for i, other_elevator in enumerate(self.elevators)
+        ):
+            debug(self.env, f"elevator {elevator_index} being lazy (other closer)")
             return Action_Stop()
 
         if floor != elevator.floor:
@@ -502,7 +511,7 @@ if __name__ == "__main__":
     random.seed(0)
     for i in range(len(elevators)):
         env.process(controller.run_elevator(i))
-    requests = random_requests(100000)
+    requests = random_requests(10000)
     # requests = test_requests()
     env.process(run_requests(env, controller, requests))
     env.run()
@@ -520,7 +529,9 @@ if __name__ == "__main__":
             floor = request.end
 
         if floor is not None:
-            times_by_floor.setdefault(floor, []).append(request.end_time - request.start_time)
+            times_by_floor.setdefault(floor, []).append(
+                request.end_time - request.start_time
+            )
 
     mean_latencies = []
     max_latencies = []
