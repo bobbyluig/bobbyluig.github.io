@@ -10,16 +10,18 @@ k_building_floors: int = 20
 k_door_velocity: float = 3.0
 k_door_wait: float = 5.0
 k_elevator_acceleration: float = 1.0
-k_elevator_capacity: int = 4
+k_elevator_capacity: int = 10
+k_elevator_count: int = 2
 k_elevator_velocity: float = 1.0
 k_person_velocity: float = 0.5
+k_request_rate: float = 2
 
-k_debug: bool = True
+k_debug: bool = False
 
 
-def debug(message):
+def debug(env: simpy.Environment, message):
     if k_debug:
-        print(message)
+        print(f"{round(env.now, 2)}: {message}")
 
 
 @dataclass
@@ -54,17 +56,19 @@ class Request:
     def on_wait(self, env: simpy.Environment):
         self.start_time = env.now
         debug(
-            f"{env.now}: request {self.name} waiting at floor {self.start} to go to {self.end}"
+            env,
+            f"request {self.name} waiting at floor {self.start} to go to {self.end}",
         )
 
     def on_enter(self, env: simpy.Environment):
         debug(
-            f"{env.now}: request {self.name} entering at floor {self.start} to go to {self.end}"
+            env,
+            f"request {self.name} entering at floor {self.start} to go to {self.end}",
         )
 
     def on_exit(self, env: simpy.Environment):
         self.end_time = env.now
-        debug(f"{env.now}: request {self.name} exiting at floor {self.end}")
+        debug(env, f"request {self.name} exiting at floor {self.end}")
 
 
 class Elevator:
@@ -258,16 +262,17 @@ class Controller:
             self.building.down_buttons[elevator.floor] = False
 
         debug(
-            f"{self.env.now}: elevator {elevator_index} arriving at {elevator.floor} heading {elevator.direction}"
+            self.env,
+            f"elevator {elevator_index} arriving at {elevator.floor} heading {elevator.direction}",
         )
 
         if elevator.moving:
             yield self.env.timeout(k_elevator_acceleration)
             elevator.moving = False
 
-        debug(f"{self.env.now}: elevator {elevator_index} door start opening")
+        debug(self.env, f"elevator {elevator_index} door start opening")
         yield self.env.timeout(k_door_velocity)
-        debug(f"{self.env.now}: elevator {elevator_index} door done opening")
+        debug(self.env, f"elevator {elevator_index} door done opening")
 
         at_capacity = False
         while not at_capacity:
@@ -296,7 +301,7 @@ class Controller:
                 request.on_enter(self.env)
 
             if building_requests[elevator.floor]:
-                debug(f"{self.env.now}: elevator {elevator_index} at capacity")
+                debug(self.env, f"elevator {elevator_index} at capacity")
                 at_capacity = True
 
             try:
@@ -310,22 +315,25 @@ class Controller:
                         door_close_event.fail(e)
                     finally:
                         self.door_processes[elevator_index] = None
-                    
-                self.door_processes[elevator_index] = self.env.process(wait_door_close())
-                debug(f"{self.env.now}: elevator {elevator_index} door start waiting")
+
+                self.door_processes[elevator_index] = self.env.process(
+                    wait_door_close()
+                )
+                debug(self.env, f"elevator {elevator_index} door start waiting")
                 yield door_close_event
-                debug(f"{self.env.now}: elevator {elevator_index} door end waiting")
+                debug(self.env, f"elevator {elevator_index} door end waiting")
 
                 elevator.arrived = False
-                debug(f"{self.env.now}: elevator {elevator_index} door start closing")
+                debug(self.env, f"elevator {elevator_index} door start closing")
                 yield self.env.timeout(k_door_velocity)
-                debug(f"{self.env.now}: elevator {elevator_index} door done closing")
+                debug(self.env, f"elevator {elevator_index} door done closing")
 
                 if at_capacity:
+
                     def skip_floor(building_buttons, floor, direction):
                         yield self.env.timeout(1)
                         building_buttons[floor] = self.needs_button(direction, floor)
-                        debug(f"{self.env.now}: re-pressing button on floor {floor}")
+                        debug(self.env, f"re-pressing button on floor {floor}")
 
                     self.env.process(
                         skip_floor(
@@ -337,15 +345,14 @@ class Controller:
 
                 break
             except simpy.Interrupt:
-                debug(
-                    f"{self.env.now}: elevator {elevator_index} door wait interrupted"
-                )
+                debug(self.env, f"elevator {elevator_index} door wait interrupted")
 
     def action_move(self, elevator_index: int, action: Action_Move):
         elevator = self.elevators[elevator_index]
 
         debug(
-            f"{self.env.now}: elevator {elevator_index} heading to floor {action.floor} from {elevator.floor}"
+            self.env,
+            f"elevator {elevator_index} heading to floor {action.floor} from {elevator.floor}",
         )
 
         if elevator.floor == action.floor:
@@ -382,14 +389,14 @@ class Controller:
             floor = self.closest_floor_with_request(elevator_index)
 
         if floor is None:
-            debug(f"{self.env.now}: elevator {elevator_index} has no requests")
+            debug(self.env, f"elevator {elevator_index} has no requests")
             return Action_Stop()
 
         if elevator.direction == 0 and any(
             i != elevator_index and other_elevator.target == floor
             for i, other_elevator in enumerate(self.elevators)
         ):
-            debug(f"{self.env.now}: elevator {elevator_index} being lazy")
+            debug(self.env, f"elevator {elevator_index} being lazy")
             return Action_Stop()
 
         if floor != elevator.floor:
@@ -451,27 +458,25 @@ def random_requests(count: int) -> List[Tuple[float, Request]]:
     start_time: float = 0
 
     distribution = [
-        (45.0, lambda: Request(0, random.randint(3, k_building_floors - 1))),
-        (45.0, lambda: Request(random.randint(3, k_building_floors - 1), 0)),
+        (47.5, lambda: Request(0, random.randint(3, k_building_floors - 1))),
+        (47.5, lambda: Request(random.randint(3, k_building_floors - 1), 0)),
         (
-            4.0,
+            2.5,
             lambda: Request(
                 random.randint(1, 2), random.randint(3, k_building_floors - 1)
             ),
         ),
         (
-            4.0,
+            2.5,
             lambda: Request(
                 random.randint(3, k_building_floors - 1), random.randint(1, 2)
             ),
         ),
-        (1.0, lambda: Request(0, random.randint(1, 2))),
-        (1.0, lambda: Request(random.randint(1, 2), 0)),
     ]
     weights = [x[0] for x in distribution]
 
     for _ in range(count):
-        start_time += random.randint(0, 30)
+        start_time += random.uniform(0, 60.0 / k_request_rate)
         choice = random.choices(list(range(len(distribution))), weights=weights)[0]
         requests.append((start_time, distribution[choice][1]()))
 
@@ -491,14 +496,14 @@ def run_requests(
 if __name__ == "__main__":
     env = simpy.Environment()
     building = Building()
-    elevators = [Elevator() for _ in range(2)]
+    elevators = [Elevator() for _ in range(k_elevator_count)]
     controller = Controller(env, building, elevators)
 
     random.seed(0)
     for i in range(len(elevators)):
         env.process(controller.run_elevator(i))
-    # requests = random_requests(10000)
-    requests = test_requests()
+    requests = random_requests(100000)
+    # requests = test_requests()
     env.process(run_requests(env, controller, requests))
     env.run()
 
@@ -506,13 +511,28 @@ if __name__ == "__main__":
     print(f"mean latency: {sum(request_times) / len(request_times)}")
     print(f"max latency: {max(request_times)}")
 
-    # for i in range(k_floors):
-    #     request_times = [
-    #         request.end_time - request.start_time
-    #         for _, request in requests
-    #         if request.start == i and request.end == 0
-    #     ]
-    #     if request_times:
-    #         print(i)
-    #         print(f"mean latency: {sum(request_times) / len(request_times)}")
-    #         print(f"max latency: {max(request_times)}")
+    times_by_floor = {}
+    for _, request in requests:
+        floor = None
+        if request.start > 2:
+            floor = request.start
+        elif request.end > 2:
+            floor = request.end
+
+        if floor is not None:
+            times_by_floor.setdefault(floor, []).append(request.end_time - request.start_time)
+
+    mean_latencies = []
+    max_latencies = []
+
+    for i in range(k_building_floors):
+        if i in times_by_floor:
+            request_times = times_by_floor[i]
+            mean_latencies.append(sum(request_times) / len(request_times))
+            max_latencies.append(max(request_times))
+        else:
+            mean_latencies.append(None)
+            max_latencies.append(None)
+
+    print(f"mean latency by floor: {mean_latencies}")
+    print(f"max latency by floor: {max_latencies}")
