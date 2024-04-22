@@ -152,7 +152,61 @@ Each elevator is associated with a wake event. When an elevator runs the `Stop` 
 
 ### Capacity
 
+When an elevator is full, it can no longer serve additional requests. However, it must continue to stop on floors along its direction since capacity is observed by requests and not by the controller. For simplicity, we model this in the `Arrive` action. We assume that requests are well-behaved and will wait for the elevator to depart before re-pressing the button on the floor.
+
+```python
+def action_arrive(self, elevator_index: int, action: Action_Arrive):
+    # ...
+    if at_capacity:
+        def skip_floor(buttons, floor):
+            yield self.env.timeout(0.1)
+            buttons[floor] = True
+
+        self.env.process(skip_floor(buttons, floor))
+    # ...
+```
+
+We can implement this by creating a new process that re-presses the same directional button a short time after the elevator door closes. In this case, `buttons` is already associated with a direction. There is no need to parametrize the wait time because it has very little impact on the overall simulation as long as it is sufficiently small. Note that there are some complexities not shown here. In particular, it is not necessary to press the button in rare cases where different elevator can service the request.
+
 ### Door Interruption
+
+There are cases where a request arrives while the elevator door is waiting to close. When this happens, we assume that the timer for the door resets (usually because someone holds the door open). This is not a hard concept to describe, but it is somewhat interesting to implement in the SimPy framework.
+
+```python
+def interrupt_door(self, elevator_index: int):
+    process = self.door_processes[elevator_index]
+    if process is not None:
+        process.interrupt()
+
+def action_arrive(self, elevator_index: int, action: Action_Arrive):
+    # ...
+    while not at_capacity:
+        # ...
+        try:
+            door_close_event = self.env.event()
+
+            def wait_door_close():
+                try:
+                    yield self.env.timeout(k_elevator_door_wait)
+                    door_close_event.succeed()
+                except simpy.Interrupt as e:
+                    door_close_event.fail(e)
+                finally:
+                    self.door_processes[elevator_index] = None
+
+            self.door_processes[elevator_index] = self.env.process(
+                wait_door_close()
+            )
+            yield door_close_event
+
+            # ...
+            break
+        except simpy.Interrupt:
+            pass
+    # ...
+```
+
+We rely on the fact that processes can be interrupted. However, timers are not processes in SimPy, so we need to wrap them in a process in order to interrupt the wait. The `Arrive` creates a new event that it waits on. It also starts a process that succeeds the event after the timeout, or fails the event with an interrupt exception if the process was interrupted. If the timeout runs without interrupt, then we break out of the while loop. Otherwise, we catch the exception and continue attempting to move requests from the current floor into the elevator.
 
 ## Analysis
 

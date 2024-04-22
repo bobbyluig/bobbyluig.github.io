@@ -331,9 +331,9 @@ class Controller:
                 if at_capacity:
 
                     def skip_floor(building_buttons, floor, direction):
-                        yield self.env.timeout(1)
+                        yield self.env.timeout(0.1)
                         building_buttons[floor] = self.needs_button(direction, floor)
-                        debug(self.env, f"re-pressing button on floor {floor}")
+                        debug(self.env, f"re-pressing button on floor {floor} going {direction}")
 
                     self.env.process(
                         skip_floor(
