@@ -55,7 +55,7 @@ There is a set of parameters that we want to model and tune when performing simu
 | `k_elevator_door_velocity` | The number of seconds it takes the door to open or close.                             | 3     |
 | `k_elevator_door_wait`     | The number of seconds the door will wait before closing after door sensor is tripped. | 5     |
 | `k_elevator_velocity`      | The number of seconds for the elevator to travel one floor.                           | 1     |
-| `k_person_velocity`        | The average number of seconds it takes for a person to get in or out of the elevator. | 0.5   |
+| `k_person_velocity`        | The average number of seconds it takes for a person to get in or out of the elevator. | 1     |
 | `k_request_rate`           | The average number of seconds between requests.                                       | 60    |
 
 ### Modelling
@@ -100,7 +100,55 @@ Given the list of input requests, it fairly straightforward to run the entire si
 
 ### Control Loop
 
+The main control loop for each elevator involves evaluating a policy and choosing one of three actions to take. A snippet of this is shown below. The policy is currently just the multi-elevator control algorithm described before, but could be any arbitrary function that examines the state of the system and outputs an action.
+
+```python
+@dataclass
+class Action_Arrive:
+    direction: int
+
+@dataclass
+class Action_Move:
+    floor: int
+
+@dataclass
+class Action_Stop:
+    pass
+
+def run_elevator(self, elevator_index: int):
+    while True:
+        action = self.policy(elevator_index)
+        match action:
+            case Action_Arrive():
+                yield from self.action_arrive(elevator_index, action)
+            case Action_Move():
+                yield from self.action_move(elevator_index, action)
+            case Action_Stop():
+                yield from self.action_stop(elevator_index, action)
+```
+
+One important implementation detail is that elevators operator one floor at a time. This makes the `Move` action discrete such that it is not possible to interrupt an elevator while it is moving between floors. However, the controller will reevaluate the target of an elevator once it completes the `Move` action. This should be a close enough approximation of what happens in a real elevator system.
+
+When an elevator arrives at a target floor, it is necessary to specify a direction to the `Arrive` action. This is because buttons in are directional, and requests will only board the elevator if it is heading in the right direction. In our implementation, the `Arrive` action also handles moving any requests in and out of the elevator.
+
 ### Stop Events
+
+When an elevator no longer has any requests that it needs to serve, it will stop on the current floor. However, in discrete event simulation, we need a way to signal to the control loop that the elevator should resume operation. SimPy offers an event mechanism that allows us to handle this scenario without polling.
+
+```python
+def action_stop(self, elevator_index: int, action: Action_Stop):
+    # ...
+    yield self.wake_events[elevator_index]
+
+def new_request(self, request: Request):
+    # ...
+    for i, wake_event in enumerate(self.wake_events):
+        wake_event.succeed()
+        self.wake_events[i] = self.env.event()
+    # ...
+```
+
+Each elevator is associated with a wake event. When an elevator runs the `Stop` action, it yields the event, which effectively pauses the control loop until the event is triggered. On any new request, wake events for all of the elevators are triggered to resume their control loops. We then recreate the events since an event can only be triggered once. Note that it may possible for an elevator to immediately stop again after resuming because it does not need to serve the new request.
 
 ### Capacity
 

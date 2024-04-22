@@ -13,7 +13,7 @@ k_elevator_count: int = 2
 k_elevator_door_velocity: float = 3.0
 k_elevator_door_wait: float = 5.0
 k_elevator_velocity: float = 1.0
-k_person_velocity: float = 0.5
+k_person_velocity: float = 1.0
 k_request_rate: float = 60.0
 
 k_debug: bool = False

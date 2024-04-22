@@ -63,6 +63,7 @@ include:
 exclude:
   - ".sass-cache/"
   - ".jekyll-cache/"
+  - "content/"
   - "gemfiles/"
   - "Gemfile"
   - "Gemfile.lock"
