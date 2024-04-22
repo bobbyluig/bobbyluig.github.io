@@ -7,14 +7,14 @@ import simpy.events
 
 
 k_building_floors: int = 20
-k_door_velocity: float = 3.0
-k_door_wait: float = 5.0
 k_elevator_acceleration: float = 1.0
 k_elevator_capacity: int = 10
 k_elevator_count: int = 2
+k_elevator_door_velocity: float = 3.0
+k_elevator_door_wait: float = 5.0
 k_elevator_velocity: float = 1.0
 k_person_velocity: float = 0.5
-k_request_rate: float = 2
+k_request_rate: float = 60.0
 
 k_debug: bool = False
 
@@ -271,7 +271,7 @@ class Controller:
             elevator.moving = False
 
         debug(self.env, f"elevator {elevator_index} door start opening")
-        yield self.env.timeout(k_door_velocity)
+        yield self.env.timeout(k_elevator_door_velocity)
         debug(self.env, f"elevator {elevator_index} door done opening")
 
         at_capacity = False
@@ -309,7 +309,7 @@ class Controller:
 
                 def wait_door_close():
                     try:
-                        yield self.env.timeout(k_door_wait)
+                        yield self.env.timeout(k_elevator_door_wait)
                         door_close_event.succeed()
                     except simpy.Interrupt as e:
                         door_close_event.fail(e)
@@ -325,7 +325,7 @@ class Controller:
 
                 elevator.arrived = False
                 debug(self.env, f"elevator {elevator_index} door start closing")
-                yield self.env.timeout(k_door_velocity)
+                yield self.env.timeout(k_elevator_door_velocity)
                 debug(self.env, f"elevator {elevator_index} door done closing")
 
                 if at_capacity:
@@ -392,9 +392,22 @@ class Controller:
             debug(self.env, f"elevator {elevator_index} has no requests")
             return Action_Stop()
 
-        if elevator.direction == 0 and any(
-            i != elevator_index and other_elevator.target == floor
-            for i, other_elevator in enumerate(self.elevators)
+        if (
+            elevator.direction == 0
+            and elevator.floor != floor
+            and any(
+                i != elevator_index
+                and other_elevator.target == floor
+                and other_elevator.direction
+                == (
+                    1
+                    if floor > elevator.floor
+                    or floor == elevator.floor
+                    and self.building.up_buttons[elevator.floor]
+                    else -1
+                )
+                for i, other_elevator in enumerate(self.elevators)
+            )
         ):
             debug(self.env, f"elevator {elevator_index} being lazy (already targeted)")
             return Action_Stop()
@@ -485,7 +498,7 @@ def random_requests(count: int) -> List[Tuple[float, Request]]:
     weights = [x[0] for x in distribution]
 
     for _ in range(count):
-        start_time += random.uniform(0, 60.0 / k_request_rate)
+        start_time += random.uniform(0, k_request_rate)
         choice = random.choices(list(range(len(distribution))), weights=weights)[0]
         requests.append((start_time, distribution[choice][1]()))
 
