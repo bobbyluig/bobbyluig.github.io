@@ -40,7 +40,7 @@ This algorithm is not the one that results in the lowest request latency, but is
 
 ## Implementation
 
-We describe a few key details of the simulation and its modelling in SimPy. The full implementation can be found [here](https://github.com/bobbyluig/bobbyluig.github.io/blob/main/content/the-elevator-is-slow/elevator.py). 
+We describe a few key details of the simulation and its modelling in SimPy. The full implementation can be found [here](https://github.com/bobbyluig/bobbyluig.github.io/blob/main/content/the-elevator-is-slow/elevator.py). Note that this is not thoroughly tested, so there could be small bugs that affect the behavior of the simulation. However, the implementation seems to behave reasonably on a few small examples as well as the request distributions used in the analysis.
 
 ### Parameters
 
@@ -59,6 +59,44 @@ There is a set of parameters that we want to model and tune when performing simu
 | `k_request_rate`           | The average number of seconds between requests.                                       | 60    |
 
 ### Modelling
+
+There are four distinct objects that we model in the simulation: `Request`, `Elevator`, `Building`, and `Controller`. We describe each in more detail.
+
+- A request contains the start and end floors. It also keeps track of the start and end simulation times corresponding to when it began waiting for the elevator to when it exited on the destination floor.
+- An elevator maintains state about the which buttons are pressed, which floor it is currently on, which direction it is heading, which floor it is heading to, the requests that are currently inside, etc. Most of the metadata is used by the controller to make routing decisions.
+- The building maintains state about which directional buttons are pressed and which requests are waiting on each floor. It does not keep track of elevators.
+- The controller is contains all elevators and the building. It interacts with the environment to operate the elevators and update any relevant state. In addition, the controller has a method which allows it to accept requests.
+
+In addition, we also need to model the request distribution and input format. It is easier to reason about repeatability if we materialize the sequence of requests prior to starting the simulation. Therefore, we first generate all requests and corresponding start times according to the following distribution (which is a very rough approximation of what I assume people in the building do).
+
+- With 45% probability, a request starts on the first floor and ends on a random residential floor.
+- With 45% probability, a request starts on a random residential floor and ends on the first floor.
+- With 5% probability, a request starts on a random residential floor and ends on a random non-residential floor.
+- With 5% probability, a request starts on a random non-residential floor and ends on a random residential floor.
+
+```python
+def run_requests(
+    env: simpy.Environment,
+    controller: Controller,
+    requests: List[Tuple[float, Request]],
+):
+    for start_time, request in requests:
+        yield env.timeout(start_time - env.now)
+        controller.new_request(request)
+
+if __name__ == "__main__":
+    env = simpy.Environment()
+    building = Building()
+    elevators = [Elevator() for _ in range(k_elevator_count)]
+    controller = Controller(env, building, elevators)
+
+    for i in range(len(elevators)):
+        env.process(controller.run_elevator(i))
+    env.process(run_requests(env, controller, random_requests(10000)))
+    env.run()
+```
+
+Given the list of input requests, it fairly straightforward to run the entire simulation. We just need to wait until the start time of each request before sending it to the controller. An example snippet above shows the high level setup where we first run the control loop for each elevator in a separate process before starting a final process to send the requests.  
 
 ### Control Loop
 

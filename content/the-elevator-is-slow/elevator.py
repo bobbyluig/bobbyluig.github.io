@@ -480,16 +480,16 @@ def random_requests(count: int) -> List[Tuple[float, Request]]:
     start_time: float = 0
 
     distribution = [
-        (47.5, lambda: Request(0, random.randint(3, k_building_floors - 1))),
-        (47.5, lambda: Request(random.randint(3, k_building_floors - 1), 0)),
+        (45, lambda: Request(0, random.randint(3, k_building_floors - 1))),
+        (45, lambda: Request(random.randint(3, k_building_floors - 1), 0)),
         (
-            2.5,
+            5,
             lambda: Request(
                 random.randint(1, 2), random.randint(3, k_building_floors - 1)
             ),
         ),
         (
-            2.5,
+            5,
             lambda: Request(
                 random.randint(3, k_building_floors - 1), random.randint(1, 2)
             ),
