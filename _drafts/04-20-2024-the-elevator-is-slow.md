@@ -49,12 +49,12 @@ There is a set of parameters that we want to model and tune when performing simu
 | Parameter                  | Description                                                                           | Value |
 |----------------------------|---------------------------------------------------------------------------------------|-------|
 | `k_building_floors`        | The number of floors in the building.                                                 | 20    |
-| `k_elevator_acceleration`  | The penalty in seconds for the elevator to stop or start moving.                      | 1     |
+| `k_elevator_acceleration`  | The penalty in seconds for the elevator to stop or start moving.                      | 1.5   |
 | `k_elevator_capacity`      | The capacity of each elevator.                                                        | 10    |
 | `k_elevator_count`         | The number of elevators in the building.                                              | 2     |
 | `k_elevator_door_velocity` | The number of seconds it takes the door to open or close.                             | 3     |
 | `k_elevator_door_wait`     | The number of seconds the door will wait before closing after door sensor is tripped. | 5     |
-| `k_elevator_velocity`      | The number of seconds for the elevator to travel one floor.                           | 1     |
+| `k_elevator_velocity`      | The number of seconds for the elevator to travel one floor.                           | 1.5   |
 | `k_person_velocity`        | The average number of seconds it takes for a person to get in or out of the elevator. | 1     |
 | `k_request_rate`           | The average number of seconds between requests.                                       | 60    |
 
@@ -166,7 +166,7 @@ def action_arrive(self, elevator_index: int, action: Action_Arrive):
     # ...
 ```
 
-We can implement this by creating a new process that re-presses the same directional button a short time after the elevator door closes. In this case, `buttons` is already associated with a direction. There is no need to parametrize the wait time because it has very little impact on the overall simulation as long as it is sufficiently small. Note that there are some complexities not shown here. In particular, it is not necessary to press the button in rare cases where different elevator can service the request.
+We can implement this by creating a new process that re-presses the same directional button a short time after the elevator door closes. In this case, `buttons` is already associated with a direction. There is no need to parametrize the wait time because it has very little impact on the overall simulation as long as it is sufficiently small. Note that there are some complexities not shown here. In particular, it is not necessary to press the button in rare cases where a different elevator can service the request.
 
 ### Door Interruption
 
@@ -209,6 +209,50 @@ def action_arrive(self, elevator_index: int, action: Action_Arrive):
 We rely on the fact that processes can be interrupted. However, timers are not processes in SimPy, so we need to wrap them in a process in order to interrupt the wait. The `Arrive` creates a new event that it waits on. It also starts a process that succeeds the event after the timeout, or fails the event with an interrupt exception if the process was interrupted. If the timeout runs without interrupt, then we break out of the while loop. Otherwise, we catch the exception and continue attempting to move requests from the current floor into the elevator.
 
 ## Analysis
+
+With the simulation built, we can now analyze various aspects of the elevator system. Unless otherwise stated, we use one million requests with a fixed seed for all of the experiments below.
+
+### Floor Latency
+
+{% raw %}
+<div class="chart"><canvas id="chart-floor-latency"></canvas></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  Chart.defaults.color = '#111111';
+  const ctx = document.getElementById('chart-floor-latency');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      datasets: [
+        {
+          label: 'Mean',
+          data: [89.90123609295944, 93.11153598845719, 97.19424592757457, 100.06696264495075, 102.57907943919561, 107.623613149709, 109.59870524793351, 113.83110400197131, 115.7931195160995, 120.16448276302995, 124.56577288373548, 128.46234865716067, 133.03741854876057, 136.23545769427594, 140.26242991478884, 143.92616956635607, 149.74585414492833],
+          borderWidth: 1,
+        },
+      ]
+    },
+    options: {
+      animation: false,
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Floor',
+          },
+        },
+        y: {
+          beginAtZero: false,
+          title: {
+            display: true,
+            text: 'Latency (s)',
+          },
+        },
+      },
+    }
+  });
+</script>
+{% endraw %}
 
 ## References
 

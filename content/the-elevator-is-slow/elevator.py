@@ -7,12 +7,12 @@ import simpy.events
 
 
 k_building_floors: int = 20
-k_elevator_acceleration: float = 1.0
+k_elevator_acceleration: float = 1.5
 k_elevator_capacity: int = 10
-k_elevator_count: int = 2
+k_elevator_count: int = 1
 k_elevator_door_velocity: float = 3.0
 k_elevator_door_wait: float = 5.0
-k_elevator_velocity: float = 1.0
+k_elevator_velocity: float = 1.5
 k_person_velocity: float = 1.0
 k_request_rate: float = 60.0
 
@@ -524,7 +524,7 @@ if __name__ == "__main__":
     random.seed(0)
     for i in range(len(elevators)):
         env.process(controller.run_elevator(i))
-    requests = random_requests(10000)
+    requests = random_requests(1000000)
     # requests = test_requests()
     env.process(run_requests(env, controller, requests))
     env.run()
