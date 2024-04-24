@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     for i in range(len(elevators)):
         env.process(controller.run_elevator(i))
-    env.process(run_requests(env, controller, random_requests(10000)))
+    env.process(run_requests(env, controller, random_requests(100000)))
     env.run()
 ```
 
@@ -210,7 +210,7 @@ We rely on the fact that processes can be interrupted. However, timers are not p
 
 ## Analysis
 
-With the simulation built, we can now analyze various aspects of the elevator system. Unless otherwise stated, we use 100k requests with a fixed seed for all of the experiments below.
+With the simulation built, we can now analyze various aspects of the elevator system. Unless otherwise stated, we use 100k requests drawn from the previously described distribution with a fixed seed for all of the experiments below.
 
 ### Floor Latency
 
@@ -227,13 +227,11 @@ It is interesting to see how living on different floors of the building affect t
         datasets: [
           {
             label: 'Mean',
-            data: [89.90123609295944, 93.11153598845719, 97.19424592757457, 100.06696264495075, 102.57907943919561, 107.623613149709, 109.59870524793351, 113.83110400197131, 115.7931195160995, 120.16448276302995, 124.56577288373548, 128.46234865716067, 133.03741854876057, 136.23545769427594, 140.26242991478884, 143.92616956635607, 149.74585414492833],
-            backgroundColor: '#9ad0f5',
+            data: [38.70291918383377, 40.68860665516036, 42.65609258123861, 44.76554586575107, 46.471043307795675, 48.44538091897792, 50.26455864726403, 53.00678411862765, 54.41530391970092, 56.719102754388146, 58.70396701055558, 61.101082047403814, 63.86222393886232, 66.62162959382948, 68.47235843364575, 71.62452590066998, 74.07766553082584],
           },
           {
             label: 'Max',
-            data: [270.5638813704718, 319.04624436516315, 336.2616114260163, 330.7339207176119, 332.2477633198723, 360.5243694233941, 353.96337703370955, 338.8370527611114, 339.5562544763088, 336.98318764474243, 351.04607354686595, 379.1805155449547, 414.3429391204845, 373.4304980888264, 404.555562138441, 386.57228932972066, 413.4253051318228],
-            backgroundColor: '#ffb1c1',
+            data: [133.37152319849702, 149.5396094409516, 149.52741525904275, 159.82521815155633, 148.14974494627677, 141.87939180643298, 138.72756127710454, 174.47362796554808, 157.35112143610604, 168.0848355323542, 145.21891872095875, 156.69267152022803, 178.90530922776088, 180.5266194837168, 176.50148904777598, 186.59320912277326, 183.14009668445215],
           },
         ]
       },
@@ -259,7 +257,7 @@ It is interesting to see how living on different floors of the building affect t
 </script>
 {% endraw %}
 
-There is almost a minute of difference in the mean request latencies between floor 3 and floor 20, with each floor contributing around 3.66 seconds. The relationship of max latencies by floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly situation-specific and could increase a bit if we simulated more requests.
+There is around half a minute of difference in the mean request latencies between floor 3 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latencies and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
 
 {% raw %}
 <div class="chart"><canvas id="chart-floor-latency-histogram"></canvas></div>
@@ -268,19 +266,19 @@ There is almost a minute of difference in the mean request latencies between flo
     new Chart(document.getElementById('chart-floor-latency-histogram'), {
       type: 'bar',
       data: {
-        labels: [0, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400],
+        labels: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180],
         datasets: [
           {
             label: 'Floor 4',
-            data: [196, 935, 1010, 951, 760, 577, 334, 152, 58, 16, 11, 0, 0, 0, 0, 0, 0],
+            data: [4, 1636, 1453, 974, 463, 237, 121, 53, 36, 8, 5, 6, 4, 0, 0, 0, 0, 0],
           },
           {
             label: 'Floor 12',
-            data: [0, 324, 852, 964, 937, 787, 497, 316, 191, 69, 36, 16, 8, 3, 0, 0, 0],
+            data: [0, 2, 1014, 1364, 1153, 638, 342, 217, 131, 73, 39, 15, 9, 1, 2, 0, 0, 0],
           },
           {
             label: 'Floor 20',
-            data: [0, 20, 271, 696, 855, 900, 758, 604, 410, 243, 136, 59, 33, 8, 4, 2, 1],
+            data: [0, 0, 0, 659, 846, 923, 995, 538, 428, 233, 177, 98, 42, 36, 20, 2, 2, 1],
           },
         ]
       },
@@ -305,11 +303,57 @@ There is almost a minute of difference in the mean request latencies between flo
 </script>
 {% endraw %}
 
-In the histogram above, we show the latencies of the middle 5,000 requests (when the system is closer to steady state) for the lowest, middle, and highest residential floors. The fastest way for a request to be fulfilled is for an elevator to already be on the starting floor, accept one request, and then for the elevator to travel to the ending floor uninterrupted. We do see a small percentage of requests that get fairly close to the theoretical minimum latency for their floors.
+In the histogram above, we show the latencies of the middle 5k requests (when the system is closer to steady state) for the lowest, middle, and highest residential floors. The fastest way for a request to be fulfilled is for an elevator to already be on the starting floor, accept one request, and then for the elevator to travel to the ending floor uninterrupted. We do see a small percentage of requests that get fairly close to the theoretical minimum latency for their floors.
+
+### Elevator Count
+
+There are frequently residents moving in to or out of the building. When that happens, one of the two elevators becomes reserved for a few hours and cannot be used for serving normal requests. We show the request latencies as a function of the number of elevators in the chart below. Mean and max values are computed from all requests regardless of starting and ending floor.
+
+{% raw %}
+<div class="chart"><canvas id="chart-elevator-count"></canvas></div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Chart(document.getElementById('chart-elevator-count'), {
+      type: 'bar',
+      data: {
+        labels: [1, 2, 3, 4, 5],
+        datasets: [
+          {
+            label: 'Mean',
+            data: [117.954068641431, 55.29700344923757, 46.57176647707238, 44.015681663871305, 42.75975713609125],
+          },
+          {
+            label: 'Max',
+            data: [414.3429391204845, 186.59320912277326, 157.90575060830452, 141.0790516170673, 138.5792661053128],
+          },
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Number of Elevators',
+            },
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Latency (s)',
+            },
+          },
+        },
+      }
+    });
+  });
+</script>
+{% endraw %}
+
+We see that there are diminishing returns when using more than two elevators, but only having elevator increases both the mean and max latencies by more than a factor of two. This definitely matches my empirical observations of occasionally having to wait a few minutes before the elevator will even arrive on my floor if the other elevator is reserved.
 
 ### System Throughput
 
-
+### Parameter Impact
 
 ## References
 

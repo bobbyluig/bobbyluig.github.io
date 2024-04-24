@@ -10,7 +10,7 @@ import simpy.events
 k_building_floors: int = 20
 k_elevator_acceleration: float = 1.5
 k_elevator_capacity: int = 10
-k_elevator_count: int = 1
+k_elevator_count: int = 2
 k_elevator_door_velocity: float = 3.0
 k_elevator_door_wait: float = 5.0
 k_elevator_velocity: float = 1.5
@@ -334,7 +334,10 @@ class Controller:
                     def skip_floor(building_buttons, floor, direction):
                         yield self.env.timeout(0.1)
                         building_buttons[floor] = self.needs_button(direction, floor)
-                        debug(self.env, f"re-pressing button on floor {floor} going {direction}")
+                        debug(
+                            self.env,
+                            f"re-pressing button on floor {floor} going {direction}",
+                        )
 
                     self.env.process(
                         skip_floor(
@@ -533,6 +536,10 @@ if __name__ == "__main__":
     print(f"mean latency: {sum(request_times) / len(request_times)}")
     print(f"max latency: {max(request_times)}")
 
+    first_latency = sum(request_times[:1000]) / len(request_times[:1000])
+    last_latency = sum(request_times[-1000:]) / len(request_times[-1000:])
+    print(f"mean latency last/first ratio: {first_latency / last_latency}")
+
     times_by_floor = {}
     for _, request in requests:
         floor = None
@@ -561,7 +568,9 @@ if __name__ == "__main__":
     print(f"mean latency by floor: {mean_latencies}")
     print(f"max latency by floor: {max_latencies}")
 
-    # for i in [3, 11, 19]:
-    #     histogram = np.histogram(times_by_floor[i][500:5500], bins=np.arange(0, 450, 25))
-    #     print(f"histogram values of floor {i}: {list(histogram[0])}")
-    #     print(f"histogram bins of floor {i}: {list(histogram[1])}")
+    for i in [3, 11, 19]:
+        histogram = np.histogram(
+            times_by_floor[i][500:5500], bins=np.arange(0, 200, 10)
+        )
+        print(f"histogram values of floor {i}: {list(histogram[0])}")
+        print(f"histogram bins of floor {i}: {list(histogram[1])}")
