@@ -15,7 +15,7 @@ k_elevator_door_velocity: float = 3.0
 k_elevator_door_wait: float = 5.0
 k_elevator_velocity: float = 1.5
 k_person_velocity: float = 1.0
-k_request_rate: float = 60.0
+k_request_rate: float = 17.0
 
 k_debug: bool = False
 
@@ -141,8 +141,10 @@ class Controller:
         self.policy: Callable[[int], Action] = self.simple_policy
 
     def interrupt_door(self, elevator_index: int):
+        elevator = self.elevators[elevator_index]
         process = self.door_processes[elevator_index]
-        if process is not None:
+
+        if elevator.count < k_elevator_capacity and process is not None:
             process.interrupt()
 
     def needs_button(self, direction: int, floor: int) -> bool:
@@ -275,14 +277,22 @@ class Controller:
         yield self.env.timeout(k_elevator_door_velocity)
         debug(self.env, f"elevator {elevator_index} door done opening")
 
-        at_capacity = False
-        while not at_capacity:
-            while elevator.requests[elevator.floor]:
-                request = elevator.requests[elevator.floor].pop()
-                yield self.env.timeout(k_person_velocity)
-                elevator.count -= 1
-                request.on_exit(self.env)
+        while elevator.requests[elevator.floor]:
+            request = elevator.requests[elevator.floor].pop()
+            yield self.env.timeout(k_person_velocity)
+            elevator.count -= 1
+            request.on_exit(self.env)
 
+        if elevator.direction > 0:
+            building_buttons = self.building.up_buttons
+            building_requests = self.building.up_requests
+        else:
+            building_buttons = self.building.down_buttons
+            building_requests = self.building.down_requests
+
+        at_capacity = False
+
+        while True:
             if elevator.direction > 0:
                 building_buttons = self.building.up_buttons
                 building_requests = self.building.up_requests
@@ -301,7 +311,7 @@ class Controller:
                 elevator.count += 1
                 request.on_enter(self.env)
 
-            if building_requests[elevator.floor]:
+            if not at_capacity and building_requests[elevator.floor]:
                 debug(self.env, f"elevator {elevator_index} at capacity")
                 at_capacity = True
 
@@ -324,32 +334,35 @@ class Controller:
                 yield door_close_event
                 debug(self.env, f"elevator {elevator_index} door end waiting")
 
-                elevator.arrived = False
-                debug(self.env, f"elevator {elevator_index} door start closing")
-                yield self.env.timeout(k_elevator_door_velocity)
-                debug(self.env, f"elevator {elevator_index} door done closing")
-
-                if at_capacity:
-
-                    def skip_floor(building_buttons, floor, direction):
-                        yield self.env.timeout(0.1)
-                        building_buttons[floor] = self.needs_button(direction, floor)
-                        debug(
-                            self.env,
-                            f"re-pressing button on floor {floor} going {direction}",
-                        )
-
-                    self.env.process(
-                        skip_floor(
-                            building_buttons,
-                            elevator.floor,
-                            1 if elevator.direction > 0 else -1,
-                        )
-                    )
-
                 break
             except simpy.Interrupt:
-                debug(self.env, f"elevator {elevator_index} door wait interrupted")
+                debug(
+                    env,
+                    f"elevator {elevator_index} door wait interrupted on floor {elevator.floor}",
+                )
+
+        elevator.arrived = False
+        debug(self.env, f"elevator {elevator_index} door start closing")
+        yield self.env.timeout(k_elevator_door_velocity)
+        debug(self.env, f"elevator {elevator_index} door done closing")
+
+        if at_capacity:
+
+            def skip_floor(building_buttons, floor, direction):
+                yield self.env.timeout(0)
+                building_buttons[floor] = self.needs_button(direction, floor)
+                debug(
+                    self.env,
+                    f"re-pressing button on floor {floor} going {direction}",
+                )
+
+            self.env.process(
+                skip_floor(
+                    building_buttons,
+                    elevator.floor,
+                    1 if elevator.direction > 0 else -1,
+                )
+            )
 
     def action_move(self, elevator_index: int, action: Action_Move):
         elevator = self.elevators[elevator_index]
@@ -528,17 +541,17 @@ if __name__ == "__main__":
     random.seed(0)
     for i in range(len(elevators)):
         env.process(controller.run_elevator(i))
-    requests = random_requests(100000)
+    requests = random_requests(200000)
     env.process(run_requests(env, controller, requests))
     env.run()
+
+    for _, request in requests:
+        if request.end_time == 0:
+            raise Exception(f"request {request.name} not fulfilled")
 
     request_times = [request.end_time - request.start_time for _, request in requests]
     print(f"mean latency: {sum(request_times) / len(request_times)}")
     print(f"max latency: {max(request_times)}")
-
-    first_latency = sum(request_times[:1000]) / len(request_times[:1000])
-    last_latency = sum(request_times[-1000:]) / len(request_times[-1000:])
-    print(f"mean latency last/first ratio: {first_latency / last_latency}")
 
     times_by_floor = {}
     for _, request in requests:

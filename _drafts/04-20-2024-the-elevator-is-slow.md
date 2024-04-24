@@ -159,14 +159,14 @@ def action_arrive(self, elevator_index: int, action: Action_Arrive):
     # ...
     if at_capacity:
         def skip_floor(buttons, floor):
-            yield self.env.timeout(0.1)
+            yield self.env.timeout(0)
             buttons[floor] = True
 
         self.env.process(skip_floor(buttons, floor))
     # ...
 ```
 
-We can implement this by creating a new process that re-presses the same directional button a short time after the elevator door closes. In this case, `buttons` is already associated with a direction. There is no need to parametrize the wait time because it has very little impact on the overall simulation as long as it is sufficiently small. Note that there are some complexities not shown here. In particular, it is not necessary to press the button in rare cases where a different elevator can service the request.
+We can implement this by creating a new process that re-presses the same directional button after the elevator leaves this floor. The zero-delay timeout is necessary  we get stuck in an finite loop. In this case, `buttons` is already associated with a direction. Note that there are some complexities not shown here. In particular, it is not necessary to press the button in rare cases where a different elevator can service the request.
 
 ### Door Interruption
 
@@ -180,7 +180,7 @@ def interrupt_door(self, elevator_index: int):
 
 def action_arrive(self, elevator_index: int, action: Action_Arrive):
     # ...
-    while not at_capacity:
+    while True:
         # ...
         try:
             door_close_event = self.env.event()
@@ -352,6 +352,44 @@ There are frequently residents moving in to or out of the building. When that ha
 We see that there are diminishing returns when using more than two elevators, but only having elevator increases both the mean and max latencies by more than a factor of two. This definitely matches my empirical observations of occasionally having to wait a few minutes before the elevator will even arrive on my floor if the other elevator is reserved.
 
 ### System Throughput
+
+We can find the throughput limit of the elevator system by comparing the mean request latencies of 100k requests versus 10k requests. Below the limit, we expect the ratio to be close to one. Above the limit, we expect the ratio to be much larger than one because requests are arriving faster than the system can process them. As a result, more simulated requests leads to higher mean latencies.
+
+{% raw %}
+<div class="chart"><canvas id="chart-system-throughput"></canvas></div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Chart(document.getElementById('chart-system-throughput'), {
+      type: 'bar',
+      data: {
+        labels: [20, 19, 18, 17, 16, 15],
+        datasets: [
+          {
+            label: 'Data',
+            data: [186.18668434544497/182.35921158295497, 217.34648237035728/212.12850657038075, 253.25231168837664/261.02053311175297, 8947.877470551604/405.782109950594, 19597.67660521035/4804.1080604080025, 71915.77006400914/7670.753232717574],
+          },
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Mean Time Between Requests (s)',
+            },
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Ratio',
+            },
+          },
+        },
+      }
+    });
+  });
+</script>
+{% endraw %}
 
 ### Parameter Impact
 
