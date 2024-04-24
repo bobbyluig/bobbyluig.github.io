@@ -2,6 +2,7 @@ import random
 from dataclasses import dataclass
 from typing import Callable, List, Set, Tuple, Union
 
+import numpy as np
 import simpy
 import simpy.events
 
@@ -524,8 +525,7 @@ if __name__ == "__main__":
     random.seed(0)
     for i in range(len(elevators)):
         env.process(controller.run_elevator(i))
-    requests = random_requests(1000000)
-    # requests = test_requests()
+    requests = random_requests(100000)
     env.process(run_requests(env, controller, requests))
     env.run()
 
@@ -560,3 +560,8 @@ if __name__ == "__main__":
 
     print(f"mean latency by floor: {mean_latencies}")
     print(f"max latency by floor: {max_latencies}")
+
+    # for i in [3, 11, 19]:
+    #     histogram = np.histogram(times_by_floor[i][500:5500], bins=np.arange(0, 450, 25))
+    #     print(f"histogram values of floor {i}: {list(histogram[0])}")
+    #     print(f"histogram bins of floor {i}: {list(histogram[1])}")

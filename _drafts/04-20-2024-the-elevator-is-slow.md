@@ -2,7 +2,7 @@
 layout: post
 title: "The Elevator Is Slow"
 date: 2024-04-20
-features: [highlight]
+features: [chart, highlight]
 ---
 
 I live in a 20-story building with two elevators, and sometimes it seems like they take forever to show up. After missing the bus multiple times due to unexpectedly long waits for the elevator, I decided to write a simulation to better understand the source of my misery.
@@ -210,49 +210,106 @@ We rely on the fact that processes can be interrupted. However, timers are not p
 
 ## Analysis
 
-With the simulation built, we can now analyze various aspects of the elevator system. Unless otherwise stated, we use one million requests with a fixed seed for all of the experiments below.
+With the simulation built, we can now analyze various aspects of the elevator system. Unless otherwise stated, we use 100k requests with a fixed seed for all of the experiments below.
 
 ### Floor Latency
 
+It is interesting to see how living on different floors of the building affect the overall time spent in the elevator. We show the mean and max latencies of requests group by each floor (i.e., requests that start or end at a given floor fall into the group for that floor). 
+
 {% raw %}
-<div class="chart"><canvas id="chart-floor-latency"></canvas></div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="chart"><canvas id="chart-floor-latency-mean-max"></canvas></div>
 <script>
-  Chart.defaults.color = '#111111';
-  const ctx = document.getElementById('chart-floor-latency');
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
-      datasets: [
-        {
-          label: 'Mean',
-          data: [89.90123609295944, 93.11153598845719, 97.19424592757457, 100.06696264495075, 102.57907943919561, 107.623613149709, 109.59870524793351, 113.83110400197131, 115.7931195160995, 120.16448276302995, 124.56577288373548, 128.46234865716067, 133.03741854876057, 136.23545769427594, 140.26242991478884, 143.92616956635607, 149.74585414492833],
-          borderWidth: 1,
-        },
-      ]
-    },
-    options: {
-      animation: false,
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: 'Floor',
+  document.addEventListener('DOMContentLoaded', () => {
+    new Chart(document.getElementById('chart-floor-latency-mean-max'), {
+      type: 'bar',
+      data: {
+        labels: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+        datasets: [
+          {
+            label: 'Mean',
+            data: [89.90123609295944, 93.11153598845719, 97.19424592757457, 100.06696264495075, 102.57907943919561, 107.623613149709, 109.59870524793351, 113.83110400197131, 115.7931195160995, 120.16448276302995, 124.56577288373548, 128.46234865716067, 133.03741854876057, 136.23545769427594, 140.26242991478884, 143.92616956635607, 149.74585414492833],
+            backgroundColor: '#9ad0f5',
           },
-        },
-        y: {
-          beginAtZero: false,
-          title: {
-            display: true,
-            text: 'Latency (s)',
+          {
+            label: 'Max',
+            data: [270.5638813704718, 319.04624436516315, 336.2616114260163, 330.7339207176119, 332.2477633198723, 360.5243694233941, 353.96337703370955, 338.8370527611114, 339.5562544763088, 336.98318764474243, 351.04607354686595, 379.1805155449547, 414.3429391204845, 373.4304980888264, 404.555562138441, 386.57228932972066, 413.4253051318228],
+            backgroundColor: '#ffb1c1',
           },
-        },
+        ]
       },
-    }
+      options: {
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Floor',
+            },
+          },
+          y: {
+            beginAtZero: false,
+            title: {
+              display: true,
+              text: 'Latency (s)',
+            },
+          },
+        },
+      }
+    });
   });
 </script>
 {% endraw %}
+
+There is almost a minute of difference in the mean request latencies between floor 3 and floor 20, with each floor contributing around 3.66 seconds. The relationship of max latencies by floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly situation-specific and could increase a bit if we simulated more requests.
+
+{% raw %}
+<div class="chart"><canvas id="chart-floor-latency-histogram"></canvas></div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Chart(document.getElementById('chart-floor-latency-histogram'), {
+      type: 'bar',
+      data: {
+        labels: [0, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400],
+        datasets: [
+          {
+            label: 'Floor 4',
+            data: [196, 935, 1010, 951, 760, 577, 334, 152, 58, 16, 11, 0, 0, 0, 0, 0, 0],
+          },
+          {
+            label: 'Floor 12',
+            data: [0, 324, 852, 964, 937, 787, 497, 316, 191, 69, 36, 16, 8, 3, 0, 0, 0],
+          },
+          {
+            label: 'Floor 20',
+            data: [0, 20, 271, 696, 855, 900, 758, 604, 410, 243, 136, 59, 33, 8, 4, 2, 1],
+          },
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Latency (s)',
+            },
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Count',
+            },
+          },
+        },
+      }
+    });
+  });
+</script>
+{% endraw %}
+
+In the histogram above, we show the latencies of the middle 5,000 requests (when the system is closer to steady state) for the lowest, middle, and highest residential floors. The fastest way for a request to be fulfilled is for an elevator to already be on the starting floor, accept one request, and then for the elevator to travel to the ending floor uninterrupted. We do see a small percentage of requests that get fairly close to the theoretical minimum latency for their floors.
+
+### System Throughput
+
+
 
 ## References
 

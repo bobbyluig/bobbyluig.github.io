@@ -31,15 +31,22 @@
 {% if page.features contains "mermaid" %}
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  mediaQuery.addEventListener('change', () => window.location.reload());
   mermaid.initialize({ 
     startOnLoad: true,
-    theme: mediaQuery.matches ? 'dark' : 'default',
     flowchart: {
       diagramPadding: 1,
       useMaxWidth: false,
     },
   });
+</script>
+{% endif %}
+
+{% if page.features contains "chart" %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  Chart.defaults.color = '#111111';
+  Chart.defaults.animation = false;
+  Chart.defaults.font.family = 'Roboto, sans-serif';
+  Chart.defaults.font.size = 16;
 </script>
 {% endif %}
