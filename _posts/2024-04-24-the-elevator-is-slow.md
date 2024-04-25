@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "The Elevator Is Slow"
-date: 2024-04-20
+date: 2024-04-24
 features: [chart, highlight]
 ---
 
@@ -36,11 +36,11 @@ Initially, it may seem like the multi-elevator case is a lot more complex. Howev
 
 When multiple elevators are stopped, the controller should pick the elevator that is closest to a new request to use, since that would minimize travel time. We would also like to not send multiple elevators to service the same floor and direction. Therefore, if a stopped elevator sees that another elevator is already heading to the same floor with the same direction that it would, it will remain stopped. The only exception is that if the stopped elevator is on the same floor as the request, then it should service it regardless (to reduce the frustration of seeing an elevator on your floor, but for it to not open).
 
-This algorithm is not the one that results in the lowest request latency, but is very close to the observed behavior of the elevator system in my building. There are some efficiency tradeoffs that have been made. For example, it is possible for a stopped elevator which is closer to a requested floor to not activate at all because another moving elevator is targeting the same floor. Empirically, this performs very well (within 5% for both mean and max latency for tested distributions) compared to having no efficiency optimizations. 
+This algorithm is not the one that results in the lowest request latency, but is very close to the observed behavior of the elevator system in my building. There are some efficiency tradeoffs that have been made. For example, it is possible for a stopped elevator which is closer to a requested floor to not activate at all because another moving elevator is targeting the same floor. Empirically, this performs very well (within 5% for both mean and max latencies for tested distributions) compared to having no efficiency optimizations. 
 
 ## Implementation
 
-We describe a few key details of the simulation and its modelling in SimPy. The full implementation can be found [here](https://github.com/bobbyluig/bobbyluig.github.io/blob/main/content/the-elevator-is-slow/elevator.py). Note that this is not thoroughly tested, so there could be small bugs that affect the behavior of the simulation. However, the implementation seems to behave reasonably on a few small examples as well as the request distributions used in the analysis.
+We describe a few key details of the simulation and its modelling in SimPy. The full implementation can be found [here](https://github.com/bobbyluig/bobbyluig.github.io/blob/main/content/the-elevator-is-slow/elevator.py). Note that this is not thoroughly tested, so there could be small bugs that affect the behavior of the simulation. However, the implementation seems to behave reasonably on a few small examples as well as the requested distributions used in the analysis.
 
 ### Parameters
 
@@ -63,9 +63,9 @@ There is a set of parameters that we want to model and tune when performing simu
 There are four distinct objects that we model in the simulation: `Request`, `Elevator`, `Building`, and `Controller`. We describe each in more detail.
 
 - A request contains the start and end floors. It also keeps track of the start and end simulation times corresponding to when it began waiting for the elevator to when it exited on the destination floor.
-- An elevator maintains state about the which buttons are pressed, which floor it is currently on, which direction it is heading, which floor it is heading to, the requests that are currently inside, etc. Most of the metadata is used by the controller to make routing decisions.
+- An elevator maintains state about which buttons are pressed, which floor it is currently on, which direction it is heading, which floor it is heading to, the requests that are currently inside, etc. Most of the metadata is used by the controller to make routing decisions.
 - The building maintains state about which directional buttons are pressed and which requests are waiting on each floor. It does not keep track of elevators.
-- The controller is contains all elevators and the building. It interacts with the environment to operate the elevators and update any relevant state. In addition, the controller has a method which allows it to accept requests.
+- The controller contains all elevators and the building. It interacts with the environment to operate the elevators and update any relevant state. In addition, the controller has a method which allows it to accept requests.
 
 In addition, we also need to model the request distribution and input format. It is easier to reason about repeatability if we materialize the sequence of requests prior to starting the simulation. Therefore, we first generate all requests and corresponding start times according to the following distribution (which is a very rough approximation of what I assume people in the building do).
 
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     env.run()
 ```
 
-Given the list of input requests, it fairly straightforward to run the entire simulation. We just need to wait until the start time of each request before sending it to the controller. An example snippet above shows the high level setup where we first run the control loop for each elevator in a separate process before starting a final process to send the requests.  
+Given the list of input requests, it is fairly straightforward to run the entire simulation. We just need to wait until the start time of each request before sending it to the controller. An example snippet above shows the high level setup where we first run the control loop for each elevator in a separate process before starting a final process to send the requests.  
 
 ### Control Loop
 
@@ -127,9 +127,9 @@ def run_elevator(self, elevator_index: int):
                 yield from self.action_stop(elevator_index, action)
 ```
 
-One important implementation detail is that elevators operator one floor at a time. This makes the `Move` action discrete such that it is not possible to interrupt an elevator while it is moving between floors. However, the controller will reevaluate the target of an elevator once it completes the `Move` action. This should be a close enough approximation of what happens in a real elevator system.
+One important implementation detail is that elevators operate one floor at a time. This makes the `Move` action discrete such that it is not possible to interrupt an elevator while it is moving between floors. However, the controller will reevaluate the target of an elevator once it completes the `Move` action. This should be a close enough approximation of what happens in a real elevator system.
 
-When an elevator arrives at a target floor, it is necessary to specify a direction to the `Arrive` action. This is because buttons in are directional, and requests will only board the elevator if it is heading in the right direction. In our implementation, the `Arrive` action also handles moving any requests in and out of the elevator.
+When an elevator arrives at a target floor, it is necessary to specify a direction to the `Arrive` action. This is because buttons in the building are directional, and requests will only board the elevator if it is heading in the right direction. In our implementation, the `Arrive` action also handles moving any requests in and out of the elevator.
 
 ### Stop Events
 
@@ -148,7 +148,7 @@ def new_request(self, request: Request):
     # ...
 ```
 
-Each elevator is associated with a wake event. When an elevator runs the `Stop` action, it yields the event, which effectively pauses the control loop until the event is triggered. On any new request, wake events for all of the elevators are triggered to resume their control loops. We then recreate the events since an event can only be triggered once. Note that it may possible for an elevator to immediately stop again after resuming because it does not need to serve the new request.
+Each elevator is associated with a wake event. When an elevator runs the `Stop` action, it yields the event, which effectively pauses the control loop until the event is triggered. On any new request, wake events for all of the elevators are triggered to resume their control loops. We then recreate the events since an event can only be triggered once. Note that it may be possible for an elevator to immediately stop again after resuming because it does not need to serve the new request.
 
 ### Capacity
 
@@ -158,15 +158,15 @@ When an elevator is full, it can no longer serve additional requests. However, i
 def action_arrive(self, elevator_index: int, action: Action_Arrive):
     # ...
     if at_capacity:
-        def skip_floor(buttons, floor):
+        def skip_floor(buttons, floor, direction):
             yield self.env.timeout(0)
-            buttons[floor] = True
+            buttons[floor] = self.needs_button(direction, floor)
 
-        self.env.process(skip_floor(buttons, floor))
+        self.env.process(skip_floor(buttons, floor, direction))
     # ...
 ```
 
-We can implement this by creating a new process that re-presses the same directional button after the elevator leaves this floor. The zero-delay timeout is necessary  we get stuck in an finite loop. In this case, `buttons` is already associated with a direction. Note that there are some complexities not shown here. In particular, it is not necessary to press the button in rare cases where a different elevator can service the request.
+We can implement this by creating a new process that re-presses the same directional button after the elevator leaves this floor. The timeout is necessary because the current process should not see the button pressed when deciding which floor to go to next. Otherwise, we get stuck in an infinite loop. In this case, `buttons` is already associated with a direction. Note that it is not always necessary to press the button again because in rare cases, a different elevator can service the request.
 
 ### Door Interruption
 
@@ -174,8 +174,10 @@ There are cases where a request arrives while the elevator door is waiting to cl
 
 ```python
 def interrupt_door(self, elevator_index: int):
+    elevator = self.elevators[elevator_index]
     process = self.door_processes[elevator_index]
-    if process is not None:
+
+    if elevator.count < k_elevator_capacity and process is not None:
         process.interrupt()
 
 def action_arrive(self, elevator_index: int, action: Action_Arrive):
@@ -206,7 +208,7 @@ def action_arrive(self, elevator_index: int, action: Action_Arrive):
     # ...
 ```
 
-We rely on the fact that processes can be interrupted. However, timers are not processes in SimPy, so we need to wrap them in a process in order to interrupt the wait. The `Arrive` creates a new event that it waits on. It also starts a process that succeeds the event after the timeout, or fails the event with an interrupt exception if the process was interrupted. If the timeout runs without interrupt, then we break out of the while loop. Otherwise, we catch the exception and continue attempting to move requests from the current floor into the elevator.
+We rely on the fact that processes can be interrupted. However, timers are not processes in SimPy, so we need to wrap them in a process in order to interrupt the wait. The `Arrive` action creates a new event that it waits on. It also starts a process that succeeds the event after the timeout, or fails the event with an interrupt exception if the process was interrupted. If the timeout runs without interrupt, then we break out of the while loop. Otherwise, we catch the exception and continue attempting to move requests from the current floor into the elevator.
 
 ## Analysis
 
@@ -214,7 +216,7 @@ With the simulation built, we can now analyze various aspects of the elevator sy
 
 ### Floor Latency
 
-It is interesting to see how living on different floors of the building affect the overall time spent in the elevator. We show the mean and max latencies of requests group by each floor (i.e., requests that start or end at a given floor fall into the group for that floor). 
+It is interesting to see how living on different floors of the building affect the overall time spent in the elevator. We show the mean and max latencies of requests grouped by each floor (i.e., requests that start or end at a given floor fall into the group for that floor). 
 
 {% raw %}
 <div class="chart"><canvas id="chart-floor-latency-mean-max"></canvas></div>
@@ -257,7 +259,7 @@ It is interesting to see how living on different floors of the building affect t
 </script>
 {% endraw %}
 
-There is around half a minute of difference in the mean request latencies between floor 3 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latencies and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
+There is around half a minute of difference in the mean request latencies between floor 3 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latency and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
 
 {% raw %}
 <div class="chart"><canvas id="chart-floor-latency-histogram"></canvas></div>
@@ -324,7 +326,7 @@ There are frequently residents moving in to or out of the building. When that ha
           },
           {
             label: 'Max',
-            data: [414.3429391204845, 186.59320912277326, 157.90575060830452, 141.0790516170673, 138.5792661053128],
+            data: [414.3429391204845, 186.59320912277326, 157.90575060830452, 141.0790516170673, 138.57926610531285],
           },
         ]
       },
@@ -349,11 +351,11 @@ There are frequently residents moving in to or out of the building. When that ha
 </script>
 {% endraw %}
 
-We see that there are diminishing returns when using more than two elevators, but only having elevator increases both the mean and max latencies by more than a factor of two. This definitely matches my empirical observations of occasionally having to wait a few minutes before the elevator will even arrive on my floor if the other elevator is reserved.
+We see that there are diminishing returns when using more than two elevators, but only having one elevator increases both the mean and max latencies by more than a factor of two. This definitely matches my empirical observations of occasionally having to wait a few minutes before the elevator will even arrive on my floor if the other elevator is reserved.
 
 ### System Throughput
 
-We can find the throughput limit of the elevator system by comparing the mean request latencies of 100k requests versus 10k requests. Below the limit, we expect the ratio to be close to one. Above the limit, we expect the ratio to be much larger than one because requests are arriving faster than the system can process them. As a result, more simulated requests leads to higher mean latencies.
+We can find the max throughput of the elevator system by comparing the mean request latencies between 200k requests and 100k requests. Below the threshold, we expect the ratio to be close to one. Above the threshold, we expect the ratio to be much larger than one because requests are arriving faster than the system can process them. As a result, more simulated requests lead to higher mean latencies.
 
 {% raw %}
 <div class="chart"><canvas id="chart-system-throughput"></canvas></div>
@@ -365,8 +367,15 @@ We can find the throughput limit of the elevator system by comparing the mean re
         labels: [20, 19, 18, 17, 16, 15],
         datasets: [
           {
-            label: 'Data',
-            data: [186.18668434544497/182.35921158295497, 217.34648237035728/212.12850657038075, 253.25231168837664/261.02053311175297, 8947.877470551604/405.782109950594, 19597.67660521035/4804.1080604080025, 71915.77006400914/7670.753232717574],
+            label: 'Dataset',
+            data: [
+              186.1835094959234 / 186.31329990812952,
+              215.82737066987357 / 214.49205722318948,
+              304.7135737046539 / 306.52797741267506,
+              26585.631230024308 / 12543.125026929107,
+              93040.87735298941 / 45249.710744333715,
+              160528.16941428368  /79523.81772432546,
+            ],
           },
         ]
       },
@@ -379,6 +388,7 @@ We can find the throughput limit of the elevator system by comparing the mean re
             },
           },
           y: {
+            beginAtZero: false,
             title: {
               display: true,
               text: 'Ratio',
@@ -391,7 +401,57 @@ We can find the throughput limit of the elevator system by comparing the mean re
 </script>
 {% endraw %}
 
+We see that from the chart above that the max throughput is around 18 seconds between requests, or 3.33 requests per minute for the default parameters. At this rate, each request takes an average of 5 minutes to get from the starting floor to the ending floor. If we assume that the building has around 200 residents, and all of them need to use the elevator within a one hour window, then we actually get fairly close to the max throughput of the system.
+
 ### Parameter Impact
+
+One last analysis that we want to perform is to see which parameter has the largest impact on mean request latency. To measure this, we will double or halve parameters in a direction that reduces latency and compare the their mean request latencies against the baseline. The results are shown in the chart below and sorted based on latency reduction.
+
+{% raw %}
+<div class="chart"><canvas id="chart-system-parameter"></canvas></div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Chart(document.getElementById('chart-system-parameter'), {
+      type: 'bar',
+      data: {
+        labels: ['e_vel','e_d_vel',  'e_d_wai', 'e_acc', 'p_vel', 'e_cap'],
+        datasets: [
+          {
+            label: 'Dataset',
+            data: [
+              37.8393639353616 / 55.29700344923757, 
+              47.448846883705926 / 55.29700344923757,
+              49.923684426869826 / 55.29700344923757,
+              50.897573266073756 / 55.29700344923757,
+              53.39151825313947 / 55.29700344923757,
+              55.29700344923757 / 55.29700344923757,
+            ],
+          },
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Parameter',
+            },
+          },
+          y: {
+            beginAtZero: false,
+            title: {
+              display: true,
+              text: 'Ratio',
+            },
+          },
+        },
+      }
+    });
+  });
+</script>
+{% endraw %}
+
+Increasing the velocity of the elevator helps the most. This makes sense since a majority of each trip is spent waiting for the elevator to travel between floors. Increasing the capacity is not effective because there are no cases for the default distribution and arrival rate where the elevator is full. Surprisingly, reducing the wait time of the elevator door by half decreases the mean request latency by around 10%. This is actually something that we can adjust in the real world by pressing the door close button!
 
 ## References
 
