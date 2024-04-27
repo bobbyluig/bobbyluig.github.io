@@ -259,7 +259,7 @@ It is interesting to see how living on different floors of the building affect t
 </script>
 {% endraw %}
 
-There is around half a minute of difference in the mean request latencies between floor 3 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latency and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
+There is around half a minute of difference in the mean request latencies between floor 4 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latency and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
 
 {% raw %}
 <div class="chart"><canvas id="chart-floor-latency-histogram"></canvas></div>
