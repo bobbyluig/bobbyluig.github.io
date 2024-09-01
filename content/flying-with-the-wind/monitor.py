@@ -2,7 +2,7 @@ from typing import Union
 
 import matplotlib.pyplot as plt
 from balloon import Balloon
-
+from field import make_uniform_field
 
 class Monitor:
     """
@@ -39,10 +39,10 @@ class Monitor:
         that file. Otherwise, it will be shown.
         """
         _, axs = plt.subplots(5, 1, sharex=True)
-        axs[0].plot(self.time, [p[2] for p in self.position])
-        axs[0].set_ylabel("Position Z (m)")
-        axs[1].plot(self.time, [v[2] for v in self.velocity])
-        axs[1].set_ylabel("Velocity Z (m/s)")
+        axs[0].plot(self.time, self.position)
+        axs[0].set_ylabel("Position (m)")
+        axs[1].plot(self.time, self.velocity)
+        axs[1].set_ylabel("Velocity (m/s)")
         axs[2].plot(self.time, self.temperature)
         axs[2].set_ylabel("Temperature (°C)")
         axs[3].plot(self.time, self.fuel)
@@ -58,7 +58,7 @@ class Monitor:
 
 
 if __name__ == "__main__":
-    balloon = Balloon()
+    balloon = Balloon(make_uniform_field((5.0, 0.0, 0.0)))
     monitor = Monitor()
 
     tr = 10.10  # seconds

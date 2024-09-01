@@ -3,8 +3,9 @@ from typing import List, Sequence, cast
 
 import numpy as np
 import numpy.typing as npt
+from field import Field3, make_uniform_field
 from scipy.integrate import odeint
-from shared import Field3, Vector3, make_zero_field
+from vector import Vector3
 
 
 class Balloon:
@@ -19,6 +20,10 @@ class Balloon:
     k_gamma = 5.257
     k_mu = 0.1961
     k_omega = 8.544
+    k_drag = 0.47
+    k_rho = 1.225
+    k_area = 2189.7
+    k_mass = 2673.76 + 100.0 + 600.0
 
     # Scaling parameters.
     k_ratio_height = 1000.0  # meters
@@ -27,7 +32,7 @@ class Balloon:
     k_ratio_fuel = 4870.0  # %
     k_ratio_vent = 1485.0  # %
 
-    def __init__(self, acceleration_field: Field3 = make_zero_field()):
+    def __init__(self, wind_field: Field3 = make_uniform_field((0.0, 0.0, 0.0))):
         """
         Initializes the balloon with the given acceleration field.
         """
@@ -37,7 +42,7 @@ class Balloon:
         self.temperature: float = 1.0
         self.fuel: float = 0.0
         self.vent: float = 0.0
-        self.acceleration_field = acceleration_field
+        self.wind_field = wind_field
 
     def get_time(self) -> float:
         """
@@ -97,53 +102,54 @@ class Balloon:
 
     def derivative(self, x: Sequence[float], _) -> npt.NDArray:
         """
-        Returns the derivative of the balloon's state in the given state.
+        Returns the derivative for computing the balloon's simulation trajectory.
         """
-        (
-            position_x,
-            position_y,
-            position_z,
-            velocity_x,
-            velocity_y,
-            velocity_z,
-            temperature,
-        ) = x
-        acceleration_x, acceleration_y, acceleration_z = self.acceleration_field(
-            (position_x, position_y, position_z)
+        # Unpack the state vector.
+        x_array = np.array(x, dtype=np.float64)
+        position = x_array[0:3]
+        velocity = x_array[3:6]
+        temperature = x_array[6]
+
+        # Evaluate the wind field at the current position.
+        wind_velocity = np.array(self.wind_field(tuple(position)), dtype=np.float64)
+        relative_wind_velocity = wind_velocity - velocity
+
+        # Evaluate the temperature at the current height.
+        temperature_at_height = 1.0 - self.k_delta * position[2]
+
+        # Compute the derivative of position.
+        ddt_position = velocity
+
+        # Compute the derivative of velocity. First, account for the wind speed and drag force.
+        # Then, apply the buoyancy force.
+        ddt_velocity = (
+            0.5
+            * self.k_drag
+            * self.k_area
+            * self.k_rho
+            * relative_wind_velocity**2
+            * np.sign(relative_wind_velocity)
+            / self.k_mass
         )
-        temperature_at_height = 1.0 - self.k_delta * position_z
 
-        ddt_position_x = velocity_x
-        ddt_position_y = velocity_y
-        ddt_position_z = velocity_z
-
-        ddt_velocity_x = acceleration_x
-        ddt_velocity_y = acceleration_y
-        ddt_velocity_z = (
+        ddt_velocity[2] += (
             self.k_alpha
             * self.k_mu
             * (temperature_at_height ** (self.k_gamma - 1.0))
             * (1.0 - (temperature_at_height / temperature))
             - self.k_mu
-            - self.k_omega * velocity_z * abs(velocity_z)
-        ) + acceleration_z
+            - self.k_omega * velocity[2] ** 2 * np.sign(velocity[2])
+        )
 
+        # Compute the derivative of temperature.
         ddt_temperature = (
             -(temperature - temperature_at_height) * (self.k_beta + self.vent)
             + self.fuel
         )
 
-        return np.array(
-            (
-                ddt_position_x,
-                ddt_position_y,
-                ddt_position_z,
-                ddt_velocity_x,
-                ddt_velocity_y,
-                ddt_velocity_z,
-                ddt_temperature,
-            ),
-            dtype=np.float64,
+        # Concatenate the derivatives into a single vector.
+        return np.concatenate(
+            (ddt_position, ddt_velocity, [ddt_temperature]), dtype=np.float64
         )
 
     def step(self, duration: float):

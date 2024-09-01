@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from balloon import Balloon
-from shared import Vector3
+from vector import Vector3
 
 
 @dataclass
@@ -55,3 +55,17 @@ def apply_controller_output(
     """
     balloon.set_fuel(controller_output.fuel)
     balloon.set_vent(controller_output.vent)
+
+
+def make_proportional_controller(target_height: float, k_p: float = 0.1) -> Controller:
+    """
+    Returns a controller that targets a given height using a proportional controller.
+    """
+
+    def controller(controller_input: ControllerInput) -> ControllerOutput:
+        height_diff = target_height - controller_input.position[2]
+        fuel = -k_p * height_diff
+        vent = k_p * height_diff
+        return ControllerOutput(fuel=min(max(fuel, 0), 1), vent=min(max(vent, 0), 1))
+
+    return controller

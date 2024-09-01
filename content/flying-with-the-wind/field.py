@@ -2,11 +2,7 @@ from typing import Callable, Tuple, cast
 
 import numpy as np
 from scipy.spatial import KDTree
-
-type Vector3 = Tuple[float, float, float]
-"""
-Represents a 3D vector.
-"""
+from vector import Vector3
 
 type Field3 = Callable[[Vector3], Vector3]
 """
@@ -14,11 +10,11 @@ Represents an arbitrary field in 3D space.
 """
 
 
-def make_zero_field() -> Field3:
+def make_uniform_field(vector: Vector3) -> Field3:
     """
-    Returns a zero field function. A zero field always returns the zero vector.
+    Returns a uniform field function that always returns the same vector.   
     """
-    return lambda _: (0.0, 0.0, 0.0)
+    return lambda _: vector
 
 
 def make_random_field(
@@ -57,15 +53,18 @@ def make_random_field(
         # Find the nearest control points.
         distances, indices = tree.query(position, k=num_interpolation_points)
 
+        # If the distance to the nearest point is zero, just return that point.
+        if np.isclose(distances[0], 0):
+            return tuple(control_vectors[indices[0]])
+
         # Calculate the weights of the interpolation.
         weights = distances
         weights = 1 / weights
         weights_sum = np.sum(weights)
-        if np.isclose(weights_sum, 0):
-            return tuple(control_vectors[indices[0], i] for i in range(3))
         weights /= weights_sum
 
         # Interpolate.
         return tuple(np.dot(weights, control_vectors[indices, i]) for i in range(3))
 
     return interpolate
+
