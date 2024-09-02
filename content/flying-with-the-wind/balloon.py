@@ -28,13 +28,13 @@ class Balloon:
     k_ratio_fuel = 4870.0  # %
     k_ratio_vent = 1485.0  # %
 
-    def __init__(self, wind_field: Field3 = make_uniform_field((0.0, 0.0, 0.0))):
+    def __init__(self, wind_field: Field3 = make_uniform_field(Vector3(0.0, 0.0, 0.0))):
         """
         Initializes the balloon with the given acceleration field.
         """
         self.time: float = 0.0
-        self.position: Vector3 = (0.0, 0.0, 0.0)
-        self.velocity: Vector3 = (0.0, 0.0, 0.0)
+        self.position: Vector3 = Vector3(0.0, 0.0, 0.0)
+        self.velocity: Vector3 = Vector3(0.0, 0.0, 0.0)
         self.temperature: float = 1.0
         self.fuel: float = 0.0
         self.vent: float = 0.0
@@ -50,21 +50,13 @@ class Balloon:
         """
         Returns the current position in meters.
         """
-        return (
-            self.position[0] * self.k_ratio_distance,
-            self.position[1] * self.k_ratio_distance,
-            self.position[2] * self.k_ratio_distance,
-        )
+        return self.position * self.k_ratio_distance
 
     def get_velocity(self) -> Vector3:
         """
         Returns the current velocity in meters per second.
         """
-        return (
-            self.velocity[0] * self.k_ratio_distance / self.k_ratio_time,
-            self.velocity[1] * self.k_ratio_distance / self.k_ratio_time,
-            self.velocity[2] * self.k_ratio_distance / self.k_ratio_time,
-        )
+        return self.velocity * (self.k_ratio_distance / self.k_ratio_time)
 
     def get_temperature(self) -> float:
         """
@@ -96,22 +88,18 @@ class Balloon:
         """
         self.vent = value / self.k_ratio_vent
 
-    def derivative(self, x: Sequence[float], _) -> npt.NDArray:
+    def derivative(self, x: np.ndarray, _, w: np.ndarray) -> npt.NDArray:
         """
-        Returns the derivative for computing the balloon's simulation trajectory.
+        Returns the derivative for computing the balloon's simulation trajectory. We assume that 
+        the wind field is constant.
         """
         # Unpack the state vector.
-        x_array = np.array(x, dtype=np.float64)
-        position = x_array[0:3]
-        velocity = x_array[3:6]
-        temperature = x_array[6]
+        position = x[0:3]
+        velocity = x[3:6]
+        temperature = x[6]
 
         # Evaluate the wind field at the current position.
-        wind_velocity = (
-            np.array(self.wind_field(tuple(position)), dtype=np.float64)
-            / self.k_ratio_distance
-            * self.k_ratio_time
-        )
+        wind_velocity =  w / self.k_ratio_distance * self.k_ratio_time
         relative_wind_velocity = wind_velocity - velocity
 
         # Evaluate the temperature at the current height.
@@ -155,16 +143,22 @@ class Balloon:
         time_end = time_start + time_delta
         time_span = (time_start, time_end)
 
-        x_start = self.position + self.velocity + (self.temperature,)
-        x = odeint(self.derivative, x_start, time_span)
+        x_start = np.concatenate(
+            (self.position, self.velocity, [self.temperature]), dtype=np.float64
+        )
+        w = np.array(
+            self.wind_field(Vector3(*(self.position * self.k_ratio_distance))),
+            dtype=np.float64,
+        )
+        x = odeint(self.derivative, x_start, time_span, (w,))
         x_end: List[float] = x[-1].tolist()
 
-        self.position = cast(Vector3, tuple(x_end[0:3]))
-        self.velocity = cast(Vector3, tuple(x_end[3:6]))
+        self.position = Vector3(*x_end[0:3])
+        self.velocity = Vector3(*x_end[3:6])
         self.temperature = x_end[6]
 
-        if self.position[2] <= 0.0:
-            self.position = (0.0, 0.0, 0.0)
-            self.velocity = (0.0, 0.0, 0.0)
+        if self.position.z <= 0.0:
+            self.position = Vector3(self.position.x, self.position.y, 0.0)
+            self.velocity = Vector3(0.0, 0.0, 0.0)
 
         self.time = time_end
