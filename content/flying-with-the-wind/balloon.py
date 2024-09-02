@@ -20,13 +20,9 @@ class Balloon:
     k_gamma = 5.257
     k_mu = 0.1961
     k_omega = 8.544
-    k_drag = 0.47
-    k_rho = 1.225
-    k_area = 2189.7
-    k_mass = 2673.76 + 100.0 + 600.0
 
     # Scaling parameters.
-    k_ratio_height = 1000.0  # meters
+    k_ratio_distance = 1000.0  # meters
     k_ratio_time = 10.1  # seconds
     k_ratio_temperature = 288.2  # kelvin
     k_ratio_fuel = 4870.0  # %
@@ -55,9 +51,9 @@ class Balloon:
         Returns the current position in meters.
         """
         return (
-            self.position[0],
-            self.position[1],
-            self.position[2] * self.k_ratio_height,
+            self.position[0] * self.k_ratio_distance,
+            self.position[1] * self.k_ratio_distance,
+            self.position[2] * self.k_ratio_distance,
         )
 
     def get_velocity(self) -> Vector3:
@@ -65,9 +61,9 @@ class Balloon:
         Returns the current velocity in meters per second.
         """
         return (
-            self.velocity[0],
-            self.velocity[1],
-            self.velocity[2] * self.k_ratio_height / self.k_ratio_time,
+            self.velocity[0] * self.k_ratio_distance / self.k_ratio_time,
+            self.velocity[1] * self.k_ratio_distance / self.k_ratio_time,
+            self.velocity[2] * self.k_ratio_distance / self.k_ratio_time,
         )
 
     def get_temperature(self) -> float:
@@ -111,7 +107,11 @@ class Balloon:
         temperature = x_array[6]
 
         # Evaluate the wind field at the current position.
-        wind_velocity = np.array(self.wind_field(tuple(position)), dtype=np.float64)
+        wind_velocity = (
+            np.array(self.wind_field(tuple(position)), dtype=np.float64)
+            / self.k_ratio_distance
+            * self.k_ratio_time
+        )
         relative_wind_velocity = wind_velocity - velocity
 
         # Evaluate the temperature at the current height.
@@ -123,15 +123,8 @@ class Balloon:
         # Compute the derivative of velocity. First, account for the wind speed and drag force.
         # Then, apply the buoyancy force.
         ddt_velocity = (
-            0.5
-            * self.k_drag
-            * self.k_area
-            * self.k_rho
-            * relative_wind_velocity**2
-            * np.sign(relative_wind_velocity)
-            / self.k_mass
+            self.k_omega * relative_wind_velocity**2 * np.sign(relative_wind_velocity)
         )
-
         ddt_velocity[2] += (
             self.k_alpha
             * self.k_mu

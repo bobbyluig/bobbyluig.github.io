@@ -1,5 +1,10 @@
 from balloon import Balloon
-from controller import Controller, apply_controller_output, get_controller_input
+from controller import (
+    Controller,
+    apply_controller_output,
+    get_controller_input,
+    make_pid_controller,
+)
 from monitor import Monitor
 
 
@@ -24,3 +29,13 @@ def run(
         monitor.update(balloon)
 
     return monitor
+
+
+if __name__ == "__main__":
+    monitor = run(
+        Balloon(),
+        make_pid_controller(2000.0),
+        1,
+        10000.0,
+    )
+    monitor.plot()

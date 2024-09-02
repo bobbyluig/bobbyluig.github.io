@@ -13,7 +13,6 @@ class Monitor:
         """
         Initializes the monitor with an empty state.
         """
-        self.balloon = balloon
         self.time = []
         self.position = []
         self.velocity = []

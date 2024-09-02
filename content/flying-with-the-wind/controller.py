@@ -11,6 +11,7 @@ class ControllerInput:
     Represents inputs for the controller.
     """
 
+    time: float
     position: Vector3
     velocity: Vector3
     temperature: float
@@ -39,6 +40,7 @@ def get_controller_input(balloon: Balloon) -> ControllerInput:
     Takes a balloon and returns a ControllerInput with its state.
     """
     return ControllerInput(
+        time=balloon.get_time(),
         position=balloon.get_position(),
         velocity=balloon.get_velocity(),
         temperature=balloon.get_temperature(),
@@ -57,15 +59,25 @@ def apply_controller_output(
     balloon.set_vent(controller_output.vent)
 
 
-def make_proportional_controller(target_height: float, k_p: float = 0.1) -> Controller:
+def make_pid_controller(target_height: float) -> Controller:
     """
-    Returns a controller that targets a given height using a proportional controller.
+    Creates a PID controller for a given target height.
     """
 
-    def controller(controller_input: ControllerInput) -> ControllerOutput:
-        height_diff = target_height - controller_input.position[2]
-        fuel = -k_p * height_diff
-        vent = k_p * height_diff
-        return ControllerOutput(fuel=min(max(fuel, 0), 1), vent=min(max(vent, 0), 1))
+    k_p = 0.1
+    k_i = 0.01
+    k_d = 0.1
+
+    integral = 0
+
+    def controller(input: ControllerInput) -> ControllerOutput:
+        nonlocal integral
+        error = target_height - input.position[2]
+        integral += error
+        derivative = (error - (input.position[2] - input.velocity[2] * 0.1)) / 0.1
+        target_velocity = max(min(-error * k_p - integral * k_i - derivative * k_d, 2), -2)
+        fuel = max(min(target_velocity - input.velocity[2], 40), 0)
+        return ControllerOutput(fuel, 0)
 
     return controller
+
