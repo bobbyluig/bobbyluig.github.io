@@ -91,14 +91,14 @@ class Balloon:
     def derivative(self, x: np.ndarray, _, wind_velocity: np.ndarray) -> npt.NDArray:
         """
         Returns the derivative for computing the balloon's simulation trajectory. We assume that
-        the wind field is constant.
+        the wind velocity is constant.
         """
         # Unpack the state vector.
         position = x[0:3]
         velocity = x[3:6]
         temperature = x[6]
 
-        # Evaluate the relatively wind velocity for determining drag forces.
+        # Evaluate the relatively wind velocity.
         relative_wind_velocity = wind_velocity - velocity
 
         # Evaluate the temperature at the current height.

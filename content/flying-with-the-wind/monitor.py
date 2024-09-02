@@ -179,4 +179,4 @@ if __name__ == "__main__":
         monitor.update(balloon)
         print(k, N)
 
-    monitor.animate_trajectory()
+    monitor.plot_state()

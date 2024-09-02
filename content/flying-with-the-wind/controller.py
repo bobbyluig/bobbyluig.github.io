@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Sequence, Tuple
 
 from balloon import Balloon
 from vector import Vector3
@@ -57,3 +57,15 @@ def apply_controller_output(
     """
     balloon.set_fuel(controller_output.fuel)
     balloon.set_vent(controller_output.vent)
+
+
+class SequenceController:
+    def __init__(self, sequence: Sequence[Tuple[float, ControllerOutput]]):
+        self.sequence = sorted(sequence, key=lambda t: t[0], reverse=True)
+        self.last_output = ControllerOutput(fuel=0.0, vent=0.0)
+
+    def __call__(self, input: ControllerInput) -> ControllerOutput:
+        while self.sequence and self.sequence[-1][0] <= input.time:
+            self.last_output = self.sequence.pop()[1]
+
+        return self.last_output

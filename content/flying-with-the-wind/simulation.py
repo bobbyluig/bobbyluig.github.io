@@ -1,5 +1,11 @@
 from balloon import Balloon
-from controller import Controller, apply_controller_output, get_controller_input
+from controller import (
+    Controller,
+    ControllerOutput,
+    apply_controller_output,
+    get_controller_input,
+    SequenceController,
+)
 from monitor import Monitor
 
 
@@ -24,3 +30,17 @@ def run(
         monitor.update(balloon)
 
     return monitor
+
+
+if __name__ == "__main__":
+    monitor = run(
+        balloon=Balloon(),
+        controller=SequenceController([
+            (0.0, ControllerOutput(fuel=100.0, vent=0.0)),
+            (100.0, ControllerOutput(fuel=25.0, vent=0.0)),
+        ]),
+        time_step=1.0,
+        total_time=5000.0,
+    )
+
+    monitor.plot_state()
