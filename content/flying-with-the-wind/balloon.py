@@ -108,8 +108,8 @@ class Balloon:
         # Compute the derivative of position.
         ddt_position = velocity
 
-        # Compute the derivative of velocity. First, account for the wind speed and drag force.
-        # Then, apply the buoyancy force.
+        # Compute the derivative of velocity. First, account for the drag force due to wind. Then, 
+        # apply buoyancy force and gravitation force.
         ddt_velocity = (
             self.k_omega * relative_wind_velocity**2 * np.sign(relative_wind_velocity)
         )
@@ -119,7 +119,6 @@ class Balloon:
             * (temperature_at_height ** (self.k_gamma - 1.0))
             * (1.0 - (temperature_at_height / temperature))
             - self.k_mu
-            - self.k_omega * velocity[2] ** 2 * np.sign(velocity[2])
         )
 
         # Compute the derivative of temperature.

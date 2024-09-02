@@ -44,15 +44,20 @@ class Monitor:
         _, axs = plt.subplots(5, 1, sharex=True)
         axs[0].plot(self.time, [p.z for p in self.position])
         axs[0].set_ylabel("Height (m)")
+        axs[0].grid(True)
         axs[1].plot(self.time, [v.z for v in self.velocity])
         axs[1].set_ylabel("Velocity (m/s)")
+        axs[1].grid(True)
         axs[2].plot(self.time, self.temperature)
         axs[2].set_ylabel("Temperature (°C)")
+        axs[2].grid(True)
         axs[3].plot(self.time, self.fuel)
         axs[3].set_ylabel("Fuel (%)")
+        axs[3].grid(True)
         axs[4].plot(self.time, self.vent)
         axs[4].set_ylabel("Vent (%)")
         axs[4].set_xlabel("Time (s)")
+        axs[4].grid(True)
 
         if filename:
             plt.savefig(filename)
@@ -132,7 +137,6 @@ class Monitor:
 
 
 if __name__ == "__main__":
-    np.random.seed(0)
     balloon = Balloon(
         make_random_field(
             Vector3(5.0, 5.0, 0.0),
