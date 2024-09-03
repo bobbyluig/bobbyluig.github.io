@@ -144,7 +144,7 @@ class Balloon:
         wind_velocity = np.array(
             self.wind_field(Vector3(*(self.position * self.k_ratio_distance))),
             dtype=np.float64,
-        ) / (self.k_ratio_distance * self.k_ratio_time)
+        ) / self.k_ratio_distance * self.k_ratio_time
 
         x_start = np.concatenate(
             (self.position, self.velocity, [self.temperature]), dtype=np.float64

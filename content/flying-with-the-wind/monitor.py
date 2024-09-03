@@ -1,10 +1,11 @@
-from typing import Union
+from typing import Union, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.animation import FuncAnimation
 from balloon import Balloon
 from field import make_random_field, make_uniform_field
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
 from vector import Vector3
 
 
@@ -68,7 +69,7 @@ class Monitor:
         self, num_points: int = 5000, filename: Union[str, None] = None
     ):
         """
-        Plots the balloon's x/y trajectory over time, using color as time.
+        Plots the balloon's trajectory over time, using color as time.
         """
         num_points = min(num_points, len(self.position))
         indices = np.linspace(0, len(self.position) - 1, num_points, dtype=np.int64)
@@ -76,11 +77,11 @@ class Monitor:
         time = np.array(self.time)[indices]
 
         fig = plt.figure()
-        ax = fig.add_subplot(projection="3d")
+        ax: Axes3D = cast(Axes3D, fig.add_subplot(projection="3d"))
         ax.scatter(
             points[:, 0],
             points[:, 1],
-            points[:, 2],
+            points[:, 2], # type: ignore
             c=time,
             cmap="viridis",
             s=1,
@@ -95,25 +96,27 @@ class Monitor:
         else:
             plt.show()
 
-    def animate_trajectory(self, n: int = 5000, filename: Union[str, None] = None):
+    def animate_trajectory(self, num_points: int = 5000, filename: Union[str, None] = None):
         """
         Animates the balloon's trajectory over time.
         """
-        num_points = min(n, len(self.position))
+        num_points = min(num_points, len(self.position))
         indices = np.linspace(
             0, len(self.position) - 1, num_points, dtype=np.int64, endpoint=False
         )
         points = np.array(self.position)[indices].reshape(-1, 3)
 
         fig = plt.figure()
-        ax = fig.add_subplot(projection="3d")
+        ax: Axes3D = cast(Axes3D, fig.add_subplot(projection="3d"))
         (line,) = ax.plot([], [], [])
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
         ax.set_zlabel("z (m)")
-        ax.set_xlim3d(points[:, 0].min(), points[:, 0].max())
-        ax.set_ylim3d(points[:, 1].min(), points[:, 1].max())
-        ax.set_zlim3d(points[:, 2].min(), points[:, 2].max())
+        limit = np.max(np.ptp(points, axis=0))
+        center = (points.max(axis=0) + points.min(axis=0)) / 2
+        ax.set_xlim3d(center[0] - limit / 2, center[0] + limit / 2)
+        ax.set_ylim3d(center[1] - limit / 2, center[1] + limit / 2)
+        ax.set_zlim3d(0, limit)
         ax.set_aspect("equal")
 
         counter = ax.text2D(
@@ -134,49 +137,3 @@ class Monitor:
             ani.save(filename, writer="ffmpeg")
         else:
             plt.show()
-
-
-if __name__ == "__main__":
-    balloon = Balloon(
-        make_random_field(
-            Vector3(5.0, 5.0, 0.0),
-            Vector3(10000.0, 10000.0, 10000.0),
-        )
-    )
-    monitor = Monitor()
-
-    tr = 10.10  # seconds
-    # Initialize simulation variables
-
-    t0 = 0
-    tf = 5000
-    dt = 0.25
-    N = int(round((tf - t0) / dt) + 1)
-
-    # Test
-    for k in range(N):
-        if k == 1000:
-            balloon.set_fuel(20.0)
-        elif k == 3000:
-            balloon.set_fuel(25.0)
-        elif k == 5000:
-            balloon.set_fuel(30.0)
-        elif k == 7000:
-            balloon.set_vent(5.0)
-        elif k == 9000:
-            balloon.set_vent(0.0)
-        elif k == 11000:
-            balloon.set_fuel(22.0)
-        elif k == 13000:
-            balloon.set_fuel(21.0)
-        elif k == 15000:
-            balloon.set_fuel(20.0)
-        elif k == 17000:
-            balloon.set_fuel(0.0)
-            balloon.set_vent(5.0)
-
-        balloon.step(dt * tr)
-        monitor.update(balloon)
-        print(k, N)
-
-    monitor.plot_state()

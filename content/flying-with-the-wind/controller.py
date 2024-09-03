@@ -60,12 +60,25 @@ def apply_controller_output(
 
 
 class SequenceController:
+    """
+    A controller that returns a sequence of pre-defined outputs. The outputs are associated with 
+    times, and the controller will return the most recent output for which the time is less than or 
+    equal to the input time.
+    """
+
     def __init__(self, sequence: Sequence[Tuple[float, ControllerOutput]]):
+        """
+        Initializes the controller with a sequence of outputs.
+        """
         self.sequence = sorted(sequence, key=lambda t: t[0], reverse=True)
         self.last_output = ControllerOutput(fuel=0.0, vent=0.0)
 
     def __call__(self, input: ControllerInput) -> ControllerOutput:
+        """
+        Returns the controller output for the given input.
+        """
         while self.sequence and self.sequence[-1][0] <= input.time:
             self.last_output = self.sequence.pop()[1]
 
         return self.last_output
+
