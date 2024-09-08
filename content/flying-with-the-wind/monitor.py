@@ -1,4 +1,4 @@
-from typing import Union, cast
+from typing import List, Union, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,12 +18,12 @@ class Monitor:
         """
         Initializes the monitor with an empty state.
         """
-        self.time = []
-        self.position = []
-        self.velocity = []
-        self.temperature = []
-        self.fuel = []
-        self.vent = []
+        self.time: List[float] = []
+        self.position: List[Vector3] = []
+        self.velocity: List[Vector3] = []
+        self.temperature: List[float] = []
+        self.fuel: List[float] = []
+        self.vent: List[float] = []
 
     def update(self, balloon: Balloon):
         """

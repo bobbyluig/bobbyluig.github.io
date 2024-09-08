@@ -1,8 +1,10 @@
+import math
+
 from balloon import Balloon
 from controller import (
     Controller,
     ControllerOutput,
-    SequenceController,
+    FixedSequenceController,
     apply_controller_output,
     get_controller_input,
 )
@@ -24,7 +26,7 @@ def run(
     monitor = Monitor()
 
     start_time = balloon.get_time()
-    num_steps = int(round((total_time - start_time) / time_step) + 1)
+    num_steps = int(math.ceil((total_time - start_time) / time_step))
 
     for _ in range(num_steps):
         apply_controller_output(balloon, controller(get_controller_input(balloon)))
@@ -50,7 +52,7 @@ def run_reference_simulation() -> Monitor:
         )
     )
 
-    controller = SequenceController(
+    controller = FixedSequenceController(
         [
             (1000.0 * time_step, ControllerOutput(fuel=20.0, vent=0.0)),
             (3000.0 * time_step, ControllerOutput(fuel=25.0, vent=0.0)),
@@ -78,7 +80,7 @@ def run_test_simulation() -> Monitor:
     """
     return run(
         balloon=Balloon(),
-        controller=SequenceController(
+        controller=FixedSequenceController(
             [
                 (0.0, ControllerOutput(fuel=100.0, vent=0.0)),
                 (100.0, ControllerOutput(fuel=25.0, vent=0.0)),

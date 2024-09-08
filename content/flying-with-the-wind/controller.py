@@ -3,6 +3,7 @@ from typing import Callable, Sequence, Tuple
 
 from balloon import Balloon
 from vector import Vector3
+from simple_pid import PID
 
 
 @dataclass
@@ -59,10 +60,10 @@ def apply_controller_output(
     balloon.set_vent(controller_output.vent)
 
 
-class SequenceController:
+class FixedSequenceController:
     """
-    A controller that returns a sequence of pre-defined outputs. The outputs are associated with 
-    times, and the controller will return the most recent output for which the time is less than or 
+    A controller that returns a sequence of pre-defined outputs. The outputs are associated with
+    times, and the controller will return the most recent output for which the time is less than or
     equal to the input time.
     """
 
@@ -82,3 +83,71 @@ class SequenceController:
 
         return self.last_output
 
+
+class TimeSwitchingController:
+    """
+    A controller that switches between different controllers based on time.
+    """
+
+    def __init__(self, controllers: Sequence[Tuple[float, Controller]]):
+        """
+        Initializes the controller with a sequence of controllers.
+        """
+        self.controllers = sorted(controllers, key=lambda t: t[0], reverse=True)
+        self.last_controller = None
+
+    def __call__(self, input: ControllerInput) -> ControllerOutput:
+        """
+        Returns the controller output for the given input.
+        """
+        while self.controllers and self.controllers[-1][0] <= input.time:
+            self.last_controller = self.controllers.pop()[1]
+
+        if self.last_controller is None:
+            return ControllerOutput(fuel=0.0, vent=0.0)
+
+        return self.last_controller(input)
+
+
+class PIDController:
+    """
+    A controller that uses a PID algorithm to control the vent and fuel of the balloon.
+    """
+
+    def __init__(
+        self,
+        set_point: float,
+        input_fn: Callable[[ControllerInput], float],
+        k_p: float = 1.0,
+        k_i: float = 0.0,
+        k_d: float = 0.0,
+    ):
+        """
+        Initializes the controller with the given tuning parameters.
+        """
+        self.now = 0
+        self.input_fn = input_fn
+        self.pid = PID(
+            Kp=k_p,
+            Ki=k_i,
+            Kd=k_d,
+            setpoint=set_point,
+            sample_time=1,
+            output_limits=(-1, 1),
+            time_fn=lambda: self.now,
+        )
+
+    def __call__(self, input: ControllerInput) -> ControllerOutput:
+        """
+        Returns the controller output for the given input.
+        """
+        self.now = input.time
+
+        output = self.pid(self.input_fn(input))
+        if output is None:
+            output = 0
+
+        if output < 0:
+            return ControllerOutput(fuel=0, vent=-100*output)
+        else:
+            return ControllerOutput(fuel=100*output, vent=0)
