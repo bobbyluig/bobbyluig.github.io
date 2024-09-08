@@ -26,7 +26,7 @@ def simulate(k_p, k_i, k_d):
             (0.0, make_velocity_pid_controller(k_p, k_i, k_d, 3.0)),
             (1000.0, make_velocity_pid_controller(k_p, k_i, k_d, -2.0)),
             (1500.0, make_velocity_pid_controller(k_p, k_i, k_d, 1.0)),
-            (2000.0, make_velocity_pid_controller(k_p, k_i, k_d, -1.0)),
+            (2000.0, make_velocity_pid_controller(k_p, k_i, k_d, 0)),
         ]
     )
 
@@ -49,14 +49,7 @@ def simulate(k_p, k_i, k_d):
 def objective(k_p, k_i, k_d):
     monitor, target_velocity = simulate(k_p, k_i, k_d)
     velocity = np.array([velocity.z for velocity in monitor.velocity])
-    above_target_velocity = np.abs(velocity) > np.abs(target_velocity)
-    below_target_velocity = ~above_target_velocity
-    error = np.sum(
-        np.abs(velocity[below_target_velocity] - target_velocity[below_target_velocity])
-    )
-    error += 2 * np.sum(
-        np.abs(velocity[above_target_velocity] - target_velocity[above_target_velocity])
-    )
+    error = np.mean(np.abs(velocity - target_velocity))
     return -error
 
 
@@ -67,8 +60,7 @@ def tune():
         pbounds=bounds,
         verbose=2,
     )
-    optimizer.probe({'k_d': 195.44582449686348, 'k_i': 40.43108955096633, 'k_p': 14.19792930422495})
-    optimizer.maximize(n_iter=50)
+    optimizer.maximize(n_iter=100)
 
     if optimizer.max is not None:
         print(optimizer.max)
@@ -81,5 +73,6 @@ if __name__ == "__main__":
     tune()
 
 
-# {'target': -825.6118759849973, 'params': {'k_d': 196.79360086849547, 'k_i': 40.87914486929718, 'k_p': 14.701424506041244}}
-# {'target': -816.1735224939667, 'params': {'k_d': 195.44582449686348, 'k_i': 40.43108955096633, 'k_p': 14.19792930422495}}
+# {'target': -0.466621463344402, 'params': {'k_d': 114.85867367857048, 'k_i': 15.392076945423703, 'k_p': 10.020249380128634}}
+# {'target': -0.470656638639139, 'params': {'k_d': 190.36436605461603, 'k_i': 42.00537181195583, 'k_p': 22.97781808576803}}
+# {'target': -0.4709068041909567, 'params': {'k_d': 195.44582449686348, 'k_i': 40.43108955096633, 'k_p': 14.19792930422495}}
