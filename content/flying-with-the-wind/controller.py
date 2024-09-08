@@ -148,6 +148,6 @@ class PIDController:
             output = 0
 
         if output < 0:
-            return ControllerOutput(fuel=0, vent=-round(10*output)*10)
+            return ControllerOutput(fuel=0, vent=-100 * output)
         else:
-            return ControllerOutput(fuel=100*output, vent=0)
+            return ControllerOutput(fuel=100 * output, vent=0)
