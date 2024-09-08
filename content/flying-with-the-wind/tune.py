@@ -2,32 +2,20 @@ import numpy as np
 
 from bayes_opt import BayesianOptimization
 from balloon import Balloon
-from controller import PIDController, TimeSwitchingController
+from controller import VelocityController, SequenceController
 from field import make_uniform_field
 from simulation import run
 from vector import Vector3
 
 
-def make_velocity_pid_controller(k_p, k_i, k_d, target_velocity):
-    return PIDController(
-        target_velocity,
-        lambda controller_input: controller_input.velocity.z,
-        k_p=k_p,
-        k_i=k_i,
-        k_d=k_d,
-    )
-
-
 def simulate(k_p, k_i, k_d):
     balloon = Balloon(make_uniform_field(Vector3(0.0, 0.0, 0.0)))
 
-    controller = TimeSwitchingController(
-        [
-            (0.0, make_velocity_pid_controller(k_p, k_i, k_d, 3.0)),
-            (1000.0, make_velocity_pid_controller(k_p, k_i, k_d, -2.0)),
-            (1500.0, make_velocity_pid_controller(k_p, k_i, k_d, 1.0)),
-            (2000.0, make_velocity_pid_controller(k_p, k_i, k_d, 0)),
-        ]
+    controller = SequenceController(
+        (0.0, VelocityController(3.0, k_p, k_i, k_d)),
+        (1000.0, VelocityController(-2.0, k_p, k_i, k_d)),
+        (1500.0, VelocityController(1.0, k_p, k_i, k_d)),
+        (2000.0, VelocityController(0.0, k_p, k_i, k_d)),
     )
 
     monitor = run(

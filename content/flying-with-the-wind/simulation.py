@@ -4,7 +4,8 @@ from balloon import Balloon
 from controller import (
     Controller,
     ControllerOutput,
-    FixedSequenceController,
+    FixedController,
+    SequenceController,
     apply_controller_output,
     get_controller_input,
 )
@@ -52,18 +53,16 @@ def run_reference_simulation() -> Monitor:
         )
     )
 
-    controller = FixedSequenceController(
-        [
-            (1000.0 * time_step, ControllerOutput(fuel=20.0, vent=0.0)),
-            (3000.0 * time_step, ControllerOutput(fuel=25.0, vent=0.0)),
-            (5000.0 * time_step, ControllerOutput(fuel=30.0, vent=0.0)),
-            (7000.0 * time_step, ControllerOutput(fuel=30.0, vent=5.0)),
-            (9000.0 * time_step, ControllerOutput(fuel=30.0, vent=0.0)),
-            (11000.0 * time_step, ControllerOutput(fuel=22.0, vent=0.0)),
-            (13000.0 * time_step, ControllerOutput(fuel=21.0, vent=0.0)),
-            (15000.0 * time_step, ControllerOutput(fuel=20.0, vent=0.0)),
-            (17000.0 * time_step, ControllerOutput(fuel=0.0, vent=5.0)),
-        ]
+    controller = SequenceController(
+        (1000.0 * time_step, FixedController(ControllerOutput(fuel=20.0, vent=0.0))),
+        (3000.0 * time_step, FixedController(ControllerOutput(fuel=25.0, vent=0.0))),
+        (5000.0 * time_step, FixedController(ControllerOutput(fuel=30.0, vent=0.0))),
+        (7000.0 * time_step, FixedController(ControllerOutput(fuel=30.0, vent=5.0))),
+        (9000.0 * time_step, FixedController(ControllerOutput(fuel=30.0, vent=0.0))),
+        (11000.0 * time_step, FixedController(ControllerOutput(fuel=22.0, vent=0.0))),
+        (13000.0 * time_step, FixedController(ControllerOutput(fuel=21.0, vent=0.0))),
+        (15000.0 * time_step, FixedController(ControllerOutput(fuel=20.0, vent=0.0))),
+        (17000.0 * time_step, FixedController(ControllerOutput(fuel=0.0, vent=5.0))),
     )
 
     return run(
@@ -80,11 +79,9 @@ def run_test_simulation() -> Monitor:
     """
     return run(
         balloon=Balloon(),
-        controller=FixedSequenceController(
-            [
-                (0.0, ControllerOutput(fuel=100.0, vent=0.0)),
-                (100.0, ControllerOutput(fuel=25.0, vent=0.0)),
-            ]
+        controller=SequenceController(
+            (0.0, FixedController(ControllerOutput(fuel=100.0, vent=0.0))),
+            (100.0, FixedController(ControllerOutput(fuel=25.0, vent=0.0))),
         ),
         time_step=1.0,
         total_time=5000.0,
@@ -93,4 +90,4 @@ def run_test_simulation() -> Monitor:
 
 if __name__ == "__main__":
     monitor = run_reference_simulation()
-    monitor.animate_trajectory()
+    monitor.plot_state()

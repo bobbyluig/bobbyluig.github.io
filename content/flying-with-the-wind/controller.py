@@ -60,36 +60,32 @@ def apply_controller_output(
     balloon.set_vent(controller_output.vent)
 
 
-class FixedSequenceController:
+class FixedController:
+    """
+    A controller that returns a fixed output.
+    """
+
+    def __init__(self, output: ControllerOutput):
+        """
+        Initializes the controller with a fixed output.
+        """
+        self.output = output
+
+    def __call__(self, input: ControllerInput) -> ControllerOutput:
+        """
+        Returns the controller output for the given input.
+        """
+        return self.output
+
+
+class SequenceController:
     """
     A controller that returns a sequence of pre-defined outputs. The outputs are associated with
     times, and the controller will return the most recent output for which the time is less than or
     equal to the input time.
     """
 
-    def __init__(self, sequence: Sequence[Tuple[float, ControllerOutput]]):
-        """
-        Initializes the controller with a sequence of outputs.
-        """
-        self.sequence = sorted(sequence, key=lambda t: t[0], reverse=True)
-        self.last_output = ControllerOutput(fuel=0.0, vent=0.0)
-
-    def __call__(self, input: ControllerInput) -> ControllerOutput:
-        """
-        Returns the controller output for the given input.
-        """
-        while self.sequence and self.sequence[-1][0] <= input.time:
-            self.last_output = self.sequence.pop()[1]
-
-        return self.last_output
-
-
-class TimeSwitchingController:
-    """
-    A controller that switches between different controllers based on time.
-    """
-
-    def __init__(self, controllers: Sequence[Tuple[float, Controller]]):
+    def __init__(self, *controllers: Tuple[float, Controller]):
         """
         Initializes the controller with a sequence of controllers.
         """
@@ -109,15 +105,14 @@ class TimeSwitchingController:
         return self.last_controller(input)
 
 
-class PIDController:
+class VelocityController:
     """
-    A controller that uses a PID algorithm to control the vent and fuel of the balloon.
+    A controller that targets a constant vertical velocity. It embeds a PID controller.
     """
 
     def __init__(
         self,
-        set_point: float,
-        input_fn: Callable[[ControllerInput], float],
+        target_velocity: float,
         k_p: float = 1.0,
         k_i: float = 0.0,
         k_d: float = 0.0,
@@ -126,12 +121,11 @@ class PIDController:
         Initializes the controller with the given tuning parameters.
         """
         self.now = 0
-        self.input_fn = input_fn
         self.pid = PID(
             Kp=k_p,
             Ki=k_i,
             Kd=k_d,
-            setpoint=set_point,
+            setpoint=target_velocity,
             sample_time=1,
             output_limits=(-1, 1),
             time_fn=lambda: self.now,
@@ -143,7 +137,7 @@ class PIDController:
         """
         self.now = input.time
 
-        output = self.pid(self.input_fn(input))
+        output = self.pid(input.velocity.z)
         if output is None:
             output = 0
 
