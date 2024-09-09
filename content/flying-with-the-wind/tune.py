@@ -2,14 +2,10 @@ import numpy as np
 from balloon import Balloon
 from bayes_opt import BayesianOptimization
 from controller import PositionController, SequenceController, VelocityController
-from field import make_uniform_field
 from simulation import run
-from vector import Vector3
 
 
 def simulate_velocity(k_p, k_i, k_d):
-    balloon = Balloon(make_uniform_field(Vector3(0.0, 0.0, 0.0)))
-
     controller = SequenceController(
         (0.0, VelocityController(3.0, k_p, k_i, k_d)),
         (1000.0, VelocityController(-2.0, k_p, k_i, k_d)),
@@ -18,7 +14,7 @@ def simulate_velocity(k_p, k_i, k_d):
     )
 
     monitor = run(
-        balloon=balloon,
+        balloon=Balloon(),
         controller=controller,
         time_step=1.0,
         total_time=2500.0,
@@ -60,8 +56,6 @@ def tune_velocity():
 
 
 def simulate_position(k_p, k_i, k_d):
-    balloon = Balloon(make_uniform_field(Vector3(0.0, 0.0, 0.0)))
-
     controller = SequenceController(
         (0.0, PositionController(2000.0, k_p, k_i, k_d)),
         (1500.0, PositionController(1000.0, k_p, k_i, k_d)),
@@ -70,7 +64,7 @@ def simulate_position(k_p, k_i, k_d):
     )
 
     monitor = run(
-        balloon=balloon,
+        balloon=Balloon(),
         controller=controller,
         time_step=1.0,
         total_time=6000.0,

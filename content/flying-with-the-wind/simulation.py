@@ -81,7 +81,7 @@ def run_test_simulation() -> Monitor:
         balloon=Balloon(),
         controller=SequenceController(
             (0.0, FixedController(ControllerOutput(fuel=100.0, vent=0.0))),
-            (100.0, FixedController(ControllerOutput(fuel=25.0, vent=0.0))),
+            (4000.0, FixedController(ControllerOutput(fuel=25.0, vent=0.0))),
         ),
         time_step=1.0,
         total_time=5000.0,
@@ -89,5 +89,5 @@ def run_test_simulation() -> Monitor:
 
 
 if __name__ == "__main__":
-    monitor = run_reference_simulation()
+    monitor = run_test_simulation()
     monitor.plot_state()
