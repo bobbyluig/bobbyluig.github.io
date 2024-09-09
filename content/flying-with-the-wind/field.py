@@ -1,4 +1,5 @@
-from typing import Callable, Tuple, cast
+import math
+from typing import Callable
 
 import numpy as np
 from scipy.spatial import KDTree
@@ -55,7 +56,7 @@ def make_random_field(
         distances, indices = tree.query(position, k=num_interpolation_points)
 
         # If the distance to the nearest point is zero, just return that point.
-        if np.isclose(distances[0], 0):
+        if math.isclose(distances[0], 0):
             return Vector3(*control_vectors[indices[0]])
 
         # Calculate the weights of the interpolation.
