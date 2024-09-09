@@ -108,7 +108,8 @@ class SequenceController:
 
 class VelocityController:
     """
-    A controller that targets a constant vertical velocity. It embeds a PID controller.
+    A controller that targets a constant vertical velocity. It embeds a PID controller. Fuel and
+    vent inputs are discretized to 1%.
     """
 
     def __init__(
@@ -142,10 +143,12 @@ class VelocityController:
         if output is None:
             output = 0
 
+        output = round(100 * output)
+
         if output < 0:
-            return ControllerOutput(fuel=0, vent=-100 * output)
+            return ControllerOutput(fuel=0, vent=-output)
         else:
-            return ControllerOutput(fuel=100 * output, vent=0)
+            return ControllerOutput(fuel=output, vent=0)
 
 
 class PositionController:

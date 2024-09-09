@@ -56,7 +56,7 @@ def tune_velocity():
         monitor.plot_state()
 
     # Sample Outputs:
-    # {'target': -0.4669325187496112, 'params': {'k_d': 124.25863289470911, 'k_i': 34.790141360779124, 'k_p': 10.874548503904872}}
+    # {'target': -0.4672799464529887, 'params': {'k_d': 124.25863289470911, 'k_i': 34.790141360779124, 'k_p': 10.874548503904872}}
 
 
 def simulate_position(k_p, k_i, k_d):
@@ -108,7 +108,8 @@ def tune_position():
         monitor.plot_state()
 
     # Sample Outputs:
-    # {'target': -220.81381501267944, 'params': {'k_d': 0.0, 'k_i': 0.0, 'k_p': 0.008965567179058827}}
+    # {'target': -220.9116116824867, 'params': {'k_d': 0.0, 'k_i': 0.0, 'k_p': 0.008965567179058827}}
 
 if __name__ == "__main__":
+    tune_velocity()
     tune_position()
