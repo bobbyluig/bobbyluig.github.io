@@ -21,18 +21,24 @@ def make_uniform_field(vector: Vector3) -> Field3:
 def make_random_field(
     magnitude: Vector3,
     dimensions: Vector3,
-    points_per_dimension: int = 10,
+    num_dimension_points: Vector3,
     num_interpolation_points: int = 9,
 ) -> Field3:
     """
     Returns a random field function. The returned vector never exceeds the given magnitude in each
     dimension. The underlying field is interpolated between generated control points.
     """
+    # Make sure there is at least one point in each dimension.
+    num_dimension_points = Vector3(
+        max(1, num_dimension_points.x),
+        max(1, num_dimension_points.y),
+        max(1, num_dimension_points.z),
+    )
 
     # Generate control points.
-    x = np.linspace(-dimensions.x / 2, dimensions.x / 2, points_per_dimension)
-    y = np.linspace(-dimensions.y / 2, dimensions.y / 2, points_per_dimension)
-    z = np.linspace(0, dimensions.z, points_per_dimension)
+    x = np.linspace(-dimensions.x / 2, dimensions.x / 2, int(num_dimension_points.x))
+    y = np.linspace(-dimensions.y / 2, dimensions.y / 2, int(num_dimension_points.y))
+    z = np.linspace(0, dimensions.z, int(num_dimension_points.z))
     control_points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
 
     # Generate random control vectors.
@@ -71,3 +77,4 @@ def make_random_field(
         )
 
     return interpolate
+

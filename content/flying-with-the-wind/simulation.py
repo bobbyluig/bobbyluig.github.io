@@ -1,10 +1,12 @@
 import math
 
+import numpy as np
 from balloon import Balloon
 from controller import (
     Controller,
     ControllerOutput,
     FixedController,
+    PositionController,
     SequenceController,
     apply_controller_output,
     get_controller_input,
@@ -50,6 +52,7 @@ def run_reference_simulation() -> Monitor:
         make_random_field(
             Vector3(5.0, 5.0, 0.0),
             Vector3(10000.0, 10000.0, 10000.0),
+            Vector3(10, 10, 10),
         )
     )
 
@@ -73,9 +76,9 @@ def run_reference_simulation() -> Monitor:
     )
 
 
-def run_test_simulation() -> Monitor:
+def run_max_height_simulation() -> Monitor:
     """
-    Runs a test simulation.
+    Runs a simulation where the balloon reaches its maximum possible height.
     """
     return run(
         balloon=Balloon(),
@@ -88,6 +91,27 @@ def run_test_simulation() -> Monitor:
     )
 
 
+def run_position_simulation() -> Monitor:
+    """
+    Runs a simulation with a fixed target position.
+    """
+    np.random.seed(0)
+
+    magnitude = Vector3(5.0, 5.0, 0.0)
+    dimensions = Vector3(10000.0, 10000.0, 10000.0)
+    num_dimension_points = Vector3(10, 10, 10)
+    wind_field = make_random_field(magnitude, dimensions, num_dimension_points)
+
+    target = Vector3(2000.0, 2000.0, 2000.0)
+    controller = PositionController(target, dimensions, wind_field)
+
+    return run(
+        balloon=Balloon(wind_field),
+        controller=controller,
+        time_step=1.0,
+        total_time=5000.0,
+    )
+
+
 if __name__ == "__main__":
-    monitor = run_test_simulation()
-    monitor.plot_state()
+    monitor = run_position_simulation()

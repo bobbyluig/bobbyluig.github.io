@@ -3,7 +3,6 @@ from typing import List, Union, cast
 import matplotlib.pyplot as plt
 import numpy as np
 from balloon import Balloon
-from field import make_random_field, make_uniform_field
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 from vector import Vector3

@@ -1,16 +1,20 @@
 import numpy as np
 from balloon import Balloon
 from bayes_opt import BayesianOptimization
-from controller import PositionController, SequenceController, VelocityController
+from controller import (
+    SequenceController,
+    VerticalPositionController,
+    VerticalVelocityController,
+)
 from simulation import run
 
 
 def simulate_velocity(k_p, k_i, k_d):
     controller = SequenceController(
-        (0.0, VelocityController(3.0, k_p, k_i, k_d)),
-        (1000.0, VelocityController(-2.0, k_p, k_i, k_d)),
-        (1500.0, VelocityController(1.0, k_p, k_i, k_d)),
-        (2000.0, VelocityController(0.0, k_p, k_i, k_d)),
+        (0.0, VerticalVelocityController(3.0, k_p, k_i, k_d)),
+        (1000.0, VerticalVelocityController(-2.0, k_p, k_i, k_d)),
+        (1500.0, VerticalVelocityController(1.0, k_p, k_i, k_d)),
+        (2000.0, VerticalVelocityController(0.0, k_p, k_i, k_d)),
     )
 
     monitor = run(
@@ -57,10 +61,10 @@ def tune_velocity():
 
 def simulate_position(k_p, k_i, k_d):
     controller = SequenceController(
-        (0.0, PositionController(2000.0, k_p, k_i, k_d)),
-        (1500.0, PositionController(1000.0, k_p, k_i, k_d)),
-        (3000.0, PositionController(2500.0, k_p, k_i, k_d)),
-        (4500.0, PositionController(2000.0, k_p, k_i, k_d)),
+        (0.0, VerticalPositionController(2000.0, k_p, k_i, k_d)),
+        (1500.0, VerticalPositionController(1000.0, k_p, k_i, k_d)),
+        (3000.0, VerticalPositionController(2500.0, k_p, k_i, k_d)),
+        (4500.0, VerticalPositionController(2000.0, k_p, k_i, k_d)),
     )
 
     monitor = run(
@@ -103,6 +107,7 @@ def tune_position():
 
     # Sample Outputs:
     # {'target': -220.9116116824867, 'params': {'k_d': 0.0, 'k_i': 0.0, 'k_p': 0.008965567179058827}}
+
 
 if __name__ == "__main__":
     tune_velocity()
