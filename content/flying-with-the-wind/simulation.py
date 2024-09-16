@@ -95,7 +95,7 @@ def run_position_simulation() -> Monitor:
     """
     Runs a simulation with a fixed target position.
     """
-    np.random.seed(0)
+    np.random.seed(1)
 
     magnitude = Vector3(5.0, 5.0, 0.0)
     dimensions = Vector3(10000.0, 10000.0, 10000.0)
@@ -115,3 +115,4 @@ def run_position_simulation() -> Monitor:
 
 if __name__ == "__main__":
     monitor = run_position_simulation()
+    monitor.animate_trajectory()
