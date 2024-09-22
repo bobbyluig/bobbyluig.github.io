@@ -204,6 +204,12 @@ class VerticalPositionController:
 
 
 class PositionController:
+    """
+    A controller that targets a given position taking the wind field into account. If the position
+    is not reachable, then the closest reachable position is targeted instead (subject to the grid
+    size specified).
+    """
+
     def __init__(
         self,
         target: Vector3,
@@ -217,24 +223,45 @@ class PositionController:
         self.grid_size: int = grid_size
 
         self.target_grid: Vector3 = self.position_to_grid(self.target)
-        self.current_grid: Vector3 = Vector3(0, 0, 0)
-        self.next_grid: Vector3 = Vector3(0, 0, 0)
-        self.controller: VerticalPositionController = VerticalPositionController(
-            grid_size / 2
-        )
-
-        self.update_controller()
+        self.current_grid: Union[Vector3, None] = None
+        self.next_grid: Union[Vector3, None] = None
+        self.controller: Union[VerticalPositionController, None] = None
+        self.wind_cache: Dict[Vector3, Vector3] = {}
 
     def __call__(self, input: ControllerInput) -> ControllerOutput:
         """
         Returns the controller output for the given input.
         """
-        current_grid = self.position_to_grid(input.position)
-        if current_grid != self.current_grid:
-            self.current_grid = current_grid
+        # Check if we need to initialize the controller. We do not know the position of the balloon
+        # until the first input is received.
+        if self.current_grid is None or self.controller is None:
+            # The controller is not initialized. Set a default controller that holds at the current
+            # grid height and attempt to update the controller by searching for path to the target.
+            self.current_grid = self.position_to_grid(input.position)
+            self.controller = VerticalPositionController(
+                self.grid_to_position(self.current_grid).z + self.grid_size / 2
+            )
             self.update_controller()
+        else:
+            # The controller is already initialized. We only need to update the controller if the
+            # current grid position has changed because no new path could be found otherwise.
+            current_grid = self.position_to_grid(input.position)
+            if current_grid != self.current_grid:
+                self.current_grid = current_grid
+                self.update_controller()
 
+        print(self.is_complete(), self.current_grid, self.next_grid)
         return self.controller(input)
+
+    def is_complete(self) -> bool:
+        """
+        Returns whether the controller has brought the balloon as close to the target as possible.
+        """
+        return (
+            self.current_grid is not None
+            and self.next_grid is not None
+            and self.current_grid == self.next_grid
+        )
 
     def position_to_grid(self, position: Vector3) -> Vector3:
         """
@@ -277,18 +304,18 @@ class PositionController:
         path = self.search()
 
         # If there is no next grid position, do nothing.
-        if len(path) == 1:
+        if len(path) <= 1:
             return
 
-        # If the next grid position is the same as the target, do nothing.
-        old_next_grid_z = self.next_grid.z
+        # If the next grid position is still the same one that the controller is targeting, do
+        # nothing because the target height has not changed.
+        old_next_grid = self.next_grid
         self.next_grid = path[1]
-        if self.next_grid.z == old_next_grid_z:
+        if old_next_grid is not None and self.next_grid.z == old_next_grid.z:
             return
 
         # Update the controller.
         next_position = self.grid_to_position(self.next_grid)
-        print(next_position)
         self.controller = VerticalPositionController(
             next_position.z + self.grid_size / 2
         )
@@ -299,14 +326,20 @@ class PositionController:
         A* search. If it is not possible to reach the target grid position, the path that gets
         closest is returned. The returned path is a list of grid positions.
         """
+        # Do not perform search unless we know the current grid position.
+        if self.current_grid is None:
+            return []
+
+        # Initialize A* search state.
         open_set: List[Tuple[float, Vector3]] = [
             (self.grid_distance(self.current_grid, self.target_grid), self.current_grid)
         ]
         came_from: Dict[Vector3, Union[Vector3, None]] = {self.current_grid: None}
         g_score: Dict[Vector3, float] = {self.current_grid: 0}
 
+        # Run A* search.
         while open_set:
-            score, current = heapq.heappop(open_set)
+            _, current = heapq.heappop(open_set)
             if current == self.target_grid:
                 break
             for neighbor in self.neighbors(current):
@@ -327,9 +360,13 @@ class PositionController:
                         ),
                     )
 
+        # The target is not always reachable. Find the reachable grid position that is closest to
+        # the target grid position.
         current = min(
             came_from, key=lambda grid: self.grid_distance(grid, self.target_grid)
         )
+
+        # Reconstruct the path.
         path = []
         while current is not None:
             path.append(current)
@@ -348,8 +385,11 @@ class PositionController:
             if self.grid_in_bounds(n):
                 yield n
 
-        # Get the wind field at the given grid position.
-        wind_field = self.wind_field(self.grid_to_position(grid))
+        # Get the wind field at the given grid position using the cache.
+        wind_field = self.wind_cache.get(grid)
+        if wind_field is None:
+            wind_field = self.wind_field(self.grid_to_position(grid))
+            self.wind_cache[grid] = wind_field
 
         # Compute horizontal neighbor by taking the dominant direction.
         if abs(wind_field.x) > abs(wind_field.y):

@@ -109,7 +109,7 @@ def run_position_simulation() -> Monitor:
         balloon=Balloon(wind_field),
         controller=controller,
         time_step=1.0,
-        total_time=5000.0,
+        total_time=10000.0,
     )
 
 
