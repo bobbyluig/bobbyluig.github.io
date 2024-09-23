@@ -61,10 +61,10 @@ def tune_velocity():
 
 def simulate_position(k_p, k_i, k_d):
     controller = SequenceController(
-        (0.0, VerticalPositionController(2000.0, k_p, k_i, k_d)),
-        (1500.0, VerticalPositionController(1000.0, k_p, k_i, k_d)),
-        (3000.0, VerticalPositionController(2500.0, k_p, k_i, k_d)),
-        (4500.0, VerticalPositionController(2000.0, k_p, k_i, k_d)),
+        (0.0, VerticalPositionController(1000.0, k_p, k_i, k_d)),
+        (1500.0, VerticalPositionController(500.0, k_p, k_i, k_d)),
+        (3000.0, VerticalPositionController(750.0, k_p, k_i, k_d)),
+        (4500.0, VerticalPositionController(250.0, k_p, k_i, k_d)),
     )
 
     monitor = run(
@@ -75,10 +75,10 @@ def simulate_position(k_p, k_i, k_d):
     )
 
     target_position = np.zeros(len(monitor.time))
-    target_position[0:1500] = 2000.0
-    target_position[1500:3000] = 1000.0
-    target_position[3000:4500] = 2500.0
-    target_position[4500:6000] = 2000.0
+    target_position[0:1500] = 1000.0
+    target_position[1500:3000] = 500.0
+    target_position[3000:4500] = 750.0
+    target_position[4500:6000] = 250.0
 
     return monitor, target_position
 
@@ -91,7 +91,7 @@ def objective_position(k_p, k_i, k_d):
 
 
 def tune_position():
-    bounds = {"k_p": (0, 0.02), "k_i": (0, 0), "k_d": (0, 0)}
+    bounds = {"k_p": (0, 0.02), "k_i": (0, 0.0), "k_d": (0, 0.0)}
     optimizer = BayesianOptimization(
         f=objective_position,
         pbounds=bounds,
@@ -106,8 +106,7 @@ def tune_position():
         monitor.plot_state()
 
     # Sample Outputs:
-    # {'target': -220.9116116824867, 'params': {'k_d': 0.0, 'k_i': 0.0, 'k_p': 0.008965567179058827}}
-
+    # {'target': -63.96113129058291, 'params': {'k_d': 0.0, 'k_i': 0.0, 'k_p': 0.009774907674593549}}
 
 if __name__ == "__main__":
     tune_velocity()

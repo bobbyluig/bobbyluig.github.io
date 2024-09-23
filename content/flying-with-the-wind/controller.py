@@ -2,6 +2,7 @@ import heapq
 import math
 from dataclasses import dataclass
 from typing import Callable, Dict, Generator, List, Tuple, Union
+import functools
 
 from balloon import Balloon
 from field import Field3
@@ -163,7 +164,7 @@ class VerticalPositionController:
     def __init__(
         self,
         target: float,
-        k_p: float = 0.008965567179058827,
+        k_p: float = 0.009774907674593549,
         k_i: float = 0.0,
         k_d: float = 0.0,
     ):
@@ -215,18 +216,26 @@ class PositionController:
         target: Vector3,
         dimensions: Vector3,
         wind_field: Field3,
-        grid_size: int = 100,
+        grid_size: int = 200,
+        max_horizontal_speed: float = 10.0,
+        max_vertical_speed: float = 4.0,
     ):
         self.target: Vector3 = target
         self.dimensions: Vector3 = dimensions
         self.wind_field: Field3 = wind_field
         self.grid_size: int = grid_size
+        self.max_horizontal_speed: float = max_horizontal_speed
+        self.max_vertical_speed: float = max_vertical_speed
 
         self.target_grid: Vector3 = self.position_to_grid(self.target)
         self.current_grid: Union[Vector3, None] = None
         self.next_grid: Union[Vector3, None] = None
         self.controller: Union[VerticalPositionController, None] = None
         self.wind_cache: Dict[Vector3, Vector3] = {}
+
+        self.get_wind = functools.lru_cache(maxsize=None)(self.get_wind)
+        self.search_g = functools.lru_cache(maxsize=None)(self.search_g)
+        self.search_h = functools.lru_cache(maxsize=None)(self.search_h)
 
     def __call__(self, input: ControllerInput) -> ControllerOutput:
         """
@@ -250,7 +259,6 @@ class PositionController:
                 self.current_grid = current_grid
                 self.update_controller()
 
-        print(self.is_complete(), self.current_grid, self.next_grid)
         return self.controller(input)
 
     def is_complete(self) -> bool:
@@ -290,12 +298,6 @@ class PositionController:
             and 0 <= position.z <= self.dimensions.z
         )
 
-    def grid_distance(self, a: Vector3, b: Vector3) -> float:
-        """
-        Calculates the euclidean distance between two grid positions.
-        """
-        return ((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2) ** 0.5
-
     def update_controller(self):
         """
         Updates the current controller by searching for the best path to the target.
@@ -307,17 +309,45 @@ class PositionController:
         if len(path) <= 1:
             return
 
-        # If the next grid position is still the same one that the controller is targeting, do
-        # nothing because the target height has not changed.
-        old_next_grid = self.next_grid
-        self.next_grid = path[1]
-        if old_next_grid is not None and self.next_grid.z == old_next_grid.z:
-            return
-
         # Update the controller.
+        self.next_grid = path[1]
         next_position = self.grid_to_position(self.next_grid)
         self.controller = VerticalPositionController(
             next_position.z + self.grid_size / 2
+        )
+
+        print(self.current_grid, self.next_grid, path[-1], len(path))
+
+    def grid_distance(self, a: Vector3, b: Vector3) -> float:
+        """
+        Calculates the euclidean distance between two grid positions.
+        """
+        return (b - a).magnitude()
+
+    def get_wind(self, grid: Vector3) -> Vector3:
+        """
+        Returns the wind vector at the given grid position.
+        """
+        return self.wind_field(self.grid_to_position(grid))
+
+    def search_g(self, a: Vector3, b: Vector3) -> float:
+        """
+        Defines the cost function used in A* search. This is time it takes to go from one grid
+        position to another. We assume that we can always reach the maximum vertical speed.
+        """
+        wind = self.get_wind(a)
+        direction_unit = (b - a).normalize()
+        velocity_z = math.copysign(self.max_vertical_speed, direction_unit.z)
+        velocity = Vector3(wind.x, wind.y, velocity_z)
+        return self.grid_distance(a, b) / velocity.dot(direction_unit)
+
+    def search_h(self, a: Vector3, b: Vector3) -> float:
+        """
+        Defines the heuristic function used in A* search. This is minimum theoretical time it takes
+        to go from one grid position to another.
+        """
+        return self.grid_distance(a, b) / max(
+            self.max_horizontal_speed, self.max_vertical_speed
         )
 
     def search(self) -> List[Vector3]:
@@ -332,7 +362,7 @@ class PositionController:
 
         # Initialize A* search state.
         open_set: List[Tuple[float, Vector3]] = [
-            (self.grid_distance(self.current_grid, self.target_grid), self.current_grid)
+            (self.search_h(self.current_grid, self.target_grid), self.current_grid)
         ]
         came_from: Dict[Vector3, Union[Vector3, None]] = {self.current_grid: None}
         g_score: Dict[Vector3, float] = {self.current_grid: 0}
@@ -345,9 +375,7 @@ class PositionController:
             for neighbor in self.neighbors(current):
                 if neighbor not in g_score:
                     g_score[neighbor] = float("inf")
-                tentative_g_score = g_score[current] + self.grid_distance(
-                    current, neighbor
-                )
+                tentative_g_score = g_score[current] + self.search_g(current, neighbor)
                 if tentative_g_score < g_score[neighbor]:
                     came_from[neighbor] = current
                     g_score[neighbor] = tentative_g_score
@@ -355,7 +383,7 @@ class PositionController:
                         open_set,
                         (
                             tentative_g_score
-                            + self.grid_distance(neighbor, self.target_grid),
+                            + self.search_h(neighbor, self.target_grid),
                             neighbor,
                         ),
                     )
@@ -385,19 +413,21 @@ class PositionController:
             if self.grid_in_bounds(n):
                 yield n
 
-        # Get the wind field at the given grid position using the cache.
-        wind_field = self.wind_cache.get(grid)
-        if wind_field is None:
-            wind_field = self.wind_field(self.grid_to_position(grid))
-            self.wind_cache[grid] = wind_field
+        # Evaluate the wind field at the given grid position.
+        wind = self.get_wind(grid)
+
+        # If the wind field is too close to zero at this grid position, assume no horizontal
+        # neighbors because it is a dead zone.
+        if math.isclose(wind.x, 0) and math.isclose(wind.y, 0):
+            return
 
         # Compute horizontal neighbor by taking the dominant direction.
-        if abs(wind_field.x) > abs(wind_field.y):
-            dx = 1 if wind_field.x > 0 else -1
+        if abs(wind.x) > abs(wind.y):
+            dx = 1 if wind.x > 0 else -1
             dy = 0
         else:
             dx = 0
-            dy = 1 if wind_field.y > 0 else -1
+            dy = 1 if wind.y > 0 else -1
 
         # Yield the horizontal neighbor if it is in bounds.
         n = Vector3(grid.x + dx, grid.y + dy, grid.z)
