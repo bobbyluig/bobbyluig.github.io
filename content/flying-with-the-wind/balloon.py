@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import List, Sequence, cast
+from typing import List
 
 import numpy as np
 import numpy.typing as npt

@@ -204,11 +204,88 @@ class VerticalPositionController:
         return self.last_velocity_controller(input)
 
 
-class PositionController:
+class GreedyPositionController:
     """
-    A controller that targets a given position taking the wind field into account. If the position
-    is not reachable, then the closest reachable position is targeted instead (subject to the grid
-    size specified).
+    A controller that targets a given position taking the wind field into account. It greedily 
+    chooses the vertical position which would move the balloon closest to the target.
+    """
+    def __init__(
+        self,
+        target: Vector3,
+        dimensions: Vector3,
+        wind_field: Field3,
+        grid_size: int = 100,
+    ):
+        """
+        Initializes the controller with the given tuning parameters.
+        """
+        self.target: Vector3 = target
+        self.dimensions: Vector3 = dimensions
+        self.wind_field: Field3 = functools.lru_cache(maxsize=None)(wind_field)
+        self.grid_size: int = grid_size
+
+        self.controller: Union[VerticalPositionController, None] = None
+        self.controller_z: Union[float, None] = None
+
+    def __call__(self, input: ControllerInput) -> ControllerOutput:
+        """
+        Returns the controller output for the given input.
+        """
+        # Compute the vector from position to target.
+        v_target = Vector3(
+            self.target.x - input.position.x, self.target.y - input.position.y, 0
+        )
+
+        # If the target is within the grid size, then just target the vertical position.
+        if v_target.magnitude() <= self.grid_size:
+            self.controller = VerticalPositionController(self.target.z)
+            self.controller_z = self.target.z
+            return self.controller(input)
+
+        # Use cosine similarity to find the best vertical position.
+        v_target = v_target.normalize()
+        best_z = self.grid_size // 2
+        best_similarity = -float('inf')
+
+        for z in range(self.grid_size // 2, int(self.dimensions.z + 1), self.grid_size):
+            v_wind = self.wind_field(
+                Vector3(
+                    self.round_to_grid(input.position.x),
+                    self.round_to_grid(input.position.y),
+                    z,
+                )
+            )
+            v_wind = Vector3(v_wind.x, v_wind.y, 0).normalize()
+
+            similarity = v_wind.dot(v_target)
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_z = z
+
+        # If we are already targeting the best vertical position, then use the existing controller.
+        if (
+            self.controller_z is not None
+            and best_z == self.controller_z
+            and self.controller is not None
+        ):
+            return self.controller(input)
+
+        # Initialize a new controller.
+        self.controller_z = best_z
+        self.controller = VerticalPositionController(best_z)
+        return self.controller(input)
+
+    def round_to_grid(self, x: float) -> float:
+        """
+        Rounds a value to the nearest grid position.
+        """
+        return round(x / self.grid_size) * self.grid_size
+
+class SearchPositionController:
+    """
+    A controller that targets a given position taking the wind field into account. It uses A* to 
+    find the lowest cost path to the target. If the position is not reachable, then the closest 
+    reachable position is targeted instead (subject to the grid size specified). 
     """
 
     def __init__(
@@ -220,6 +297,9 @@ class PositionController:
         max_horizontal_speed: float = 10.0,
         max_vertical_speed: float = 4.0,
     ):
+        """
+        Initializes the controller with the given tuning parameters.
+        """
         self.target: Vector3 = target
         self.dimensions: Vector3 = dimensions
         self.wind_field: Field3 = wind_field
@@ -231,7 +311,6 @@ class PositionController:
         self.current_grid: Union[Vector3, None] = None
         self.next_grid: Union[Vector3, None] = None
         self.controller: Union[VerticalPositionController, None] = None
-        self.wind_cache: Dict[Vector3, Vector3] = {}
 
         self.get_wind = functools.lru_cache(maxsize=None)(self.get_wind)
         self.search_g = functools.lru_cache(maxsize=None)(self.search_g)
@@ -315,8 +394,6 @@ class PositionController:
         self.controller = VerticalPositionController(
             next_position.z + self.grid_size / 2
         )
-
-        print(self.current_grid, self.next_grid, path[-1], len(path))
 
     def grid_distance(self, a: Vector3, b: Vector3) -> float:
         """
@@ -407,19 +484,8 @@ class PositionController:
         """
         Returns valid neighbors of the given grid position.
         """
-        # Yield vertical neighbors if they are in bounds.
-        for dz in (-1, 1):
-            n = Vector3(grid.x, grid.y, grid.z + dz)
-            if self.grid_in_bounds(n):
-                yield n
-
         # Evaluate the wind field at the given grid position.
         wind = self.get_wind(grid)
-
-        # If the wind field is too close to zero at this grid position, assume no horizontal
-        # neighbors because it is a dead zone.
-        if math.isclose(wind.x, 0) and math.isclose(wind.y, 0):
-            return
 
         # Compute horizontal neighbor by taking the dominant direction.
         if abs(wind.x) > abs(wind.y):
@@ -428,6 +494,21 @@ class PositionController:
         else:
             dx = 0
             dy = 1 if wind.y > 0 else -1
+
+        # Yield vertical neighbors if they are in bounds. If the horizontal component is larger
+        # than the vertical component, we assume there is diagonal movement.
+        for dz in (-1, 1):
+            if abs(wind.x) > self.max_vertical_speed or abs(wind.y) > self.max_vertical_speed:
+                n = Vector3(grid.x + dx, grid.y + dy, grid.z + dz)
+            else:
+                n = Vector3(grid.x, grid.y, grid.z + dz)
+            if self.grid_in_bounds(n):
+                yield n
+
+        # If the wind field is too close to zero at this grid position, assume no horizontal
+        # neighbors because it is a dead zone.
+        if math.isclose(wind.x, 0) and math.isclose(wind.y, 0):
+            return
 
         # Yield the horizontal neighbor if it is in bounds.
         n = Vector3(grid.x + dx, grid.y + dy, grid.z)
