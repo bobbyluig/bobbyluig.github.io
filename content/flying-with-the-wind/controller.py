@@ -484,9 +484,20 @@ class SearchPositionController:
         """
         Returns valid neighbors of the given grid position.
         """
+        # Yield vertical neighbors if they are in bounds.
+        for dz in (-1, 1):
+            n = Vector3(grid.x, grid.y, grid.z + dz)
+            if self.grid_in_bounds(n):
+                yield n
+
         # Evaluate the wind field at the given grid position.
         wind = self.get_wind(grid)
 
+        # If the wind field is too close to zero at this grid position, assume no horizontal
+        # neighbors because it is a dead zone.
+        if math.isclose(wind.x, 0) and math.isclose(wind.y, 0):
+            return
+        
         # Compute horizontal neighbor by taking the dominant direction.
         if abs(wind.x) > abs(wind.y):
             dx = 1 if wind.x > 0 else -1
@@ -494,21 +505,6 @@ class SearchPositionController:
         else:
             dx = 0
             dy = 1 if wind.y > 0 else -1
-
-        # Yield vertical neighbors if they are in bounds. If the horizontal component is larger
-        # than the vertical component, we assume there is diagonal movement.
-        for dz in (-1, 1):
-            if abs(wind.x) > self.max_vertical_speed or abs(wind.y) > self.max_vertical_speed:
-                n = Vector3(grid.x + dx, grid.y + dy, grid.z + dz)
-            else:
-                n = Vector3(grid.x, grid.y, grid.z + dz)
-            if self.grid_in_bounds(n):
-                yield n
-
-        # If the wind field is too close to zero at this grid position, assume no horizontal
-        # neighbors because it is a dead zone.
-        if math.isclose(wind.x, 0) and math.isclose(wind.y, 0):
-            return
 
         # Yield the horizontal neighbor if it is in bounds.
         n = Vector3(grid.x + dx, grid.y + dy, grid.z)
