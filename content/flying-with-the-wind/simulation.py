@@ -101,18 +101,17 @@ def run_max_height_simulation() -> Monitor:
 
 def run_position_simulation(
     controller_type: type[GreedyPositionController] | type[SearchPositionController],
-    seed: Union[int, None] = None,
+    generator: np.random.Generator = np.random.default_rng(),
 ) -> Monitor:
     """
     Runs a simulation with a fixed target position.
     """
-    if seed is not None:
-        np.random.seed(seed)
-
     magnitude = Vector3(5.0, 5.0, 0.0)
     dimensions = Vector3(10000.0, 10000.0, 2000.0)
     num_dimension_points = Vector3(10, 10, 5)
-    wind_field = make_random_field(magnitude, dimensions, num_dimension_points)
+    wind_field = make_random_field(
+        magnitude, dimensions, num_dimension_points, generator=generator
+    )
 
     target = Vector3(1000.0, 1000.0, 500.0)
     controller = controller_type(target, dimensions, wind_field)
@@ -126,5 +125,6 @@ def run_position_simulation(
 
 
 if __name__ == "__main__":
-    monitor = run_position_simulation(GreedyPositionController)
+    generator = np.random.default_rng(0)
+    monitor = run_position_simulation(GreedyPositionController, generator=generator)
     monitor.animate_trajectory()

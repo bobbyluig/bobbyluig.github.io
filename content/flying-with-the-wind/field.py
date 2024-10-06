@@ -23,6 +23,7 @@ def make_random_field(
     dimensions: Vector3,
     num_dimension_points: Vector3,
     num_interpolation_points: int = 9,
+    generator: np.random.Generator = np.random.default_rng(),
 ) -> Field3:
     """
     Returns a random field function. The returned vector never exceeds the given magnitude in each
@@ -42,7 +43,7 @@ def make_random_field(
     control_points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
 
     # Generate random control vectors.
-    control_vectors = np.random.uniform(
+    control_vectors = generator.uniform(
         -magnitude, magnitude, size=(len(control_points), 3)
     )
 
