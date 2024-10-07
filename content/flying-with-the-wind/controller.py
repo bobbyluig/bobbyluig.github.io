@@ -125,6 +125,7 @@ class VerticalVelocityController:
         """
         Initializes the controller with the given tuning parameters.
         """
+        self.target = target
         self.now = 0
         self.pid = PID(
             Kp=k_p,
@@ -171,6 +172,7 @@ class VerticalPositionController:
         """
         Initializes the controller with the given tuning parameters.
         """
+        self.target = target
         self.now = 0
         self.pid = PID(
             Kp=k_p,
@@ -225,7 +227,6 @@ class GreedyPositionController:
         self.grid_size: int = grid_size
 
         self.controller: Union[VerticalPositionController, None] = None
-        self.controller_z: Union[float, None] = None
 
     def __call__(self, input: ControllerInput) -> ControllerOutput:
         """
@@ -239,7 +240,6 @@ class GreedyPositionController:
         # If the target is within the grid size, then just target the vertical position.
         if v_target.magnitude() <= self.grid_size:
             self.controller = VerticalPositionController(self.target.z)
-            self.controller_z = self.target.z
             return self.controller(input)
 
         # Use cosine similarity to find the best vertical position.
@@ -263,11 +263,7 @@ class GreedyPositionController:
                 best_z = z
 
         # If we are already targeting the best vertical position, then use the existing controller.
-        if (
-            self.controller_z is not None
-            and best_z == self.controller_z
-            and self.controller is not None
-        ):
+        if self.controller is not None and best_z == self.controller.target:
             return self.controller(input)
 
         # Initialize a new controller.
@@ -293,7 +289,7 @@ class SearchPositionController:
         target: Vector3,
         dimensions: Vector3,
         wind_field: Field3,
-        grid_size: int = 200,
+        grid_size: Vector3 = Vector3(100, 100, 100),
         max_horizontal_speed: float = 10.0,
         max_vertical_speed: float = 4.0,
     ):
@@ -303,7 +299,7 @@ class SearchPositionController:
         self.target: Vector3 = target
         self.dimensions: Vector3 = dimensions
         self.wind_field: Field3 = wind_field
-        self.grid_size: int = grid_size
+        self.grid_size: Vector3 = grid_size
         self.max_horizontal_speed: float = max_horizontal_speed
         self.max_vertical_speed: float = max_vertical_speed
 
@@ -311,6 +307,7 @@ class SearchPositionController:
         self.current_grid: Union[Vector3, None] = None
         self.next_grid: Union[Vector3, None] = None
         self.controller: Union[VerticalPositionController, None] = None
+        self.path: Union[List[Vector3], None] = None
 
         self.get_wind = functools.lru_cache(maxsize=None)(self.get_wind)
         self.search_g = functools.lru_cache(maxsize=None)(self.search_g)
@@ -327,7 +324,7 @@ class SearchPositionController:
             # grid height and attempt to update the controller by searching for path to the target.
             self.current_grid = self.position_to_grid(input.position)
             self.controller = VerticalPositionController(
-                self.grid_to_position(self.current_grid).z + self.grid_size / 2
+                self.grid_to_position(self.current_grid).z
             )
             self.update_controller()
         else:
@@ -355,9 +352,9 @@ class SearchPositionController:
         Converts the given position to a discretized grid position.
         """
         return Vector3(
-            int(position.x / self.grid_size),
-            int(position.y / self.grid_size),
-            int(position.z / self.grid_size),
+            int(position.x / self.grid_size.x),
+            int(position.y / self.grid_size.y),
+            int(position.z / self.grid_size.z),
         )
 
     def grid_to_position(self, grid: Vector3) -> Vector3:
@@ -381,19 +378,21 @@ class SearchPositionController:
         """
         Updates the current controller by searching for the best path to the target.
         """
-        # Find the best path to the target grid position.
-        path = self.search()
+        # Search for the best the best path to the target grid position if the current path is not
+        # valid or we deviated from it.
+        if self.path is None or self.path[0] != self.current_grid:
+            self.path = self.search()
 
         # If there is no next grid position, do nothing.
-        if len(path) <= 1:
+        if len(self.path) <= 1:
+            self.path = None
             return
 
         # Update the controller.
-        self.next_grid = path[1]
+        self.path = self.path[1:]
+        self.next_grid = self.path[0]
         next_position = self.grid_to_position(self.next_grid)
-        self.controller = VerticalPositionController(
-            next_position.z + self.grid_size / 2
-        )
+        self.controller = VerticalPositionController(next_position.z)
 
     def grid_distance(self, a: Vector3, b: Vector3) -> float:
         """
@@ -497,7 +496,7 @@ class SearchPositionController:
         # neighbors because it is a dead zone.
         if math.isclose(wind.x, 0) and math.isclose(wind.y, 0):
             return
-        
+
         # Compute horizontal neighbor by taking the dominant direction.
         if abs(wind.x) > abs(wind.y):
             dx = 1 if wind.x > 0 else -1
