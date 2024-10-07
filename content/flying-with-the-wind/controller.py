@@ -398,7 +398,7 @@ class SearchPositionController:
         """
         Calculates the euclidean distance between two grid positions.
         """
-        return (b - a).magnitude()
+        return (self.grid_to_position(b) - self.grid_to_position(a)).magnitude()
 
     def get_wind(self, grid: Vector3) -> Vector3:
         """
