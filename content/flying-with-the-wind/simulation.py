@@ -125,5 +125,5 @@ def run_position_simulation(
 
 if __name__ == "__main__":
     generator = np.random.default_rng(0)
-    monitor = run_position_simulation(GreedyPositionController, generator=generator)
+    monitor = run_position_simulation(SearchPositionController, generator=generator)
     monitor.animate_trajectory()

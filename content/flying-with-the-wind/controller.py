@@ -8,6 +8,7 @@ from balloon import Balloon
 from field import Field3
 from simple_pid import PID
 from vector import Vector3
+import os
 
 
 @dataclass
@@ -208,9 +209,10 @@ class VerticalPositionController:
 
 class GreedyPositionController:
     """
-    A controller that targets a given position taking the wind field into account. It greedily 
+    A controller that targets a given position taking the wind field into account. It greedily
     chooses the vertical position which would move the balloon closest to the target.
     """
+
     def __init__(
         self,
         target: Vector3,
@@ -245,7 +247,7 @@ class GreedyPositionController:
         # Use cosine similarity to find the best vertical position.
         v_target = v_target.normalize()
         best_z = self.grid_size // 2
-        best_similarity = -float('inf')
+        best_similarity = -float("inf")
 
         for z in range(self.grid_size // 2, int(self.dimensions.z + 1), self.grid_size):
             v_wind = self.wind_field(
@@ -277,11 +279,12 @@ class GreedyPositionController:
         """
         return round(x / self.grid_size) * self.grid_size
 
+
 class SearchPositionController:
     """
-    A controller that targets a given position taking the wind field into account. It uses A* to 
-    find the lowest cost path to the target. If the position is not reachable, then the closest 
-    reachable position is targeted instead (subject to the grid size specified). 
+    A controller that targets a given position taking the wind field into account. It uses A* to
+    find the lowest cost path to the target. If the position is not reachable, then the closest
+    reachable position is targeted instead (subject to the grid size specified).
     """
 
     def __init__(
@@ -290,7 +293,6 @@ class SearchPositionController:
         dimensions: Vector3,
         wind_field: Field3,
         grid_size: Vector3 = Vector3(100, 100, 100),
-        max_horizontal_speed: float = 10.0,
         max_vertical_speed: float = 4.0,
     ):
         """
@@ -298,20 +300,18 @@ class SearchPositionController:
         """
         self.target: Vector3 = target
         self.dimensions: Vector3 = dimensions
-        self.wind_field: Field3 = wind_field
+        self.wind_field: Field3 = functools.lru_cache(maxsize=None)(wind_field)
         self.grid_size: Vector3 = grid_size
-        self.max_horizontal_speed: float = max_horizontal_speed
         self.max_vertical_speed: float = max_vertical_speed
 
         self.target_grid: Vector3 = self.position_to_grid(self.target)
-        self.current_grid: Union[Vector3, None] = None
-        self.next_grid: Union[Vector3, None] = None
-        self.controller: Union[VerticalPositionController, None] = None
-        self.path: Union[List[Vector3], None] = None
+        self.unreachable_grid: Vector3 = Vector3(
+            self.target_grid.x, self.target_grid.y, -1
+        )
 
-        self.get_wind = functools.lru_cache(maxsize=None)(self.get_wind)
-        self.search_g = functools.lru_cache(maxsize=None)(self.search_g)
-        self.search_h = functools.lru_cache(maxsize=None)(self.search_h)
+        self.controller: Union[VerticalPositionController, None] = None
+        self.current_grid: Union[Vector3, None] = None
+        self.parents: Union[Dict[Vector3, Union[Vector3, None]], None] = None
 
     def __call__(self, input: ControllerInput) -> ControllerOutput:
         """
@@ -335,26 +335,17 @@ class SearchPositionController:
                 self.current_grid = current_grid
                 self.update_controller()
 
+        # The controller is initialized and updated. Return the controller output.
         return self.controller(input)
-
-    def is_complete(self) -> bool:
-        """
-        Returns whether the controller has brought the balloon as close to the target as possible.
-        """
-        return (
-            self.current_grid is not None
-            and self.next_grid is not None
-            and self.current_grid == self.next_grid
-        )
 
     def position_to_grid(self, position: Vector3) -> Vector3:
         """
         Converts the given position to a discretized grid position.
         """
         return Vector3(
-            int(position.x / self.grid_size.x),
-            int(position.y / self.grid_size.y),
-            int(position.z / self.grid_size.z),
+            int(position.x // self.grid_size.x),
+            int(position.y // self.grid_size.y),
+            int(position.z // self.grid_size.z),
         )
 
     def grid_to_position(self, grid: Vector3) -> Vector3:
@@ -369,119 +360,117 @@ class SearchPositionController:
         """
         position = self.grid_to_position(grid)
         return (
-            abs(position.x) <= self.dimensions.x / 2
-            and abs(position.y) <= self.dimensions.y / 2
-            and 0 <= position.z <= self.dimensions.z
+            abs(position.x) < self.dimensions.x / 2
+            and abs(position.y) < self.dimensions.y / 2
+            and 0 <= position.z < self.dimensions.z
         )
 
     def update_controller(self):
         """
         Updates the current controller by searching for the best path to the target.
         """
-        # Search for the best the best path to the target grid position if the current path is not
-        # valid or we deviated from it.
-        if self.path is None or self.path[0] != self.current_grid:
-            self.path = self.search()
+        # Run search if this is the first time the controller is being updated.
+        if self.parents is None:
+            self.parents = self.search()
 
-        # If there is no next grid position, do nothing.
-        if len(self.path) <= 1:
-            self.path = None
+        # If there is no current grid position, do nothing.
+        if self.current_grid is None:
             return
 
-        # Update the controller.
-        self.path = self.path[1:]
-        self.next_grid = self.path[0]
-        next_position = self.grid_to_position(self.next_grid)
-        self.controller = VerticalPositionController(next_position.z)
+        # Find the next grid position in the path.
+        next_grid = self.parents.get(self.current_grid, None)
+        if next_grid is not None and next_grid != self.unreachable_grid:
+            next_position = self.grid_to_position(next_grid)
+            self.controller = VerticalPositionController(next_position.z)
 
-    def grid_distance(self, a: Vector3, b: Vector3) -> float:
+    def grid_distance(self, grid_a: Vector3, grid_b: Vector3) -> float:
         """
         Calculates the euclidean distance between two grid positions.
         """
-        return (self.grid_to_position(b) - self.grid_to_position(a)).magnitude()
+        return (
+            self.grid_to_position(grid_b) - self.grid_to_position(grid_a)
+        ).magnitude()
 
-    def get_wind(self, grid: Vector3) -> Vector3:
+    def grid_cost(self, grid_a: Vector3, grid_b: Vector3) -> float:
         """
-        Returns the wind vector at the given grid position.
+        Defines the cost between two adjacent grid positions. This is time it takes to go from one
+        grid position to another taking into account the projected wind velocity. We assume that we
+        can always reach the maximum vertical speed.
         """
-        return self.wind_field(self.grid_to_position(grid))
-
-    def search_g(self, a: Vector3, b: Vector3) -> float:
-        """
-        Defines the cost function used in A* search. This is time it takes to go from one grid
-        position to another. We assume that we can always reach the maximum vertical speed.
-        """
-        wind = self.get_wind(a)
-        direction_unit = (b - a).normalize()
+        wind = self.wind_field(self.grid_to_position(grid_a))
+        direction_unit = (grid_b - grid_a).normalize()
         velocity_z = math.copysign(self.max_vertical_speed, direction_unit.z)
         velocity = Vector3(wind.x, wind.y, velocity_z)
-        return self.grid_distance(a, b) / velocity.dot(direction_unit)
+        return self.grid_distance(grid_a, grid_b) / velocity.dot(direction_unit)
 
-    def search_h(self, a: Vector3, b: Vector3) -> float:
+    def search(self) -> Dict[Vector3, Union[Vector3, None]]:
         """
-        Defines the heuristic function used in A* search. This is minimum theoretical time it takes
-        to go from one grid position to another.
+        Searches for the lowest cost path from all grid positions to the target using Dijkstra's
+        algorithm. Builds a previous map of the reverse graph. If the target is not reachable, then
+        the closest reachable position is targeted instead.
         """
-        return self.grid_distance(a, b) / max(
-            self.max_horizontal_speed, self.max_vertical_speed
+        # Build the forward graph.
+        forward_graph: Dict[Vector3, Dict[Vector3, Tuple[float, float]]] = {}
+        for grid in self.grids():
+            forward_graph[grid] = {
+                neighbor: (0, self.grid_cost(grid, neighbor))
+                for neighbor in self.neighbors(grid)
+            }
+            forward_graph[grid][self.unreachable_grid] = (
+                self.grid_distance(grid, self.unreachable_grid),
+                0,
+            )
+        forward_graph[self.unreachable_grid] = {self.target_grid: (0, 0)}
+
+        # Build the reverse graph.
+        reverse_graph: Dict[Vector3, Dict[Vector3, Tuple[float, float]]] = {}
+        for grid, neighbors in forward_graph.items():
+            for neighbor, cost in neighbors.items():
+                if neighbor not in reverse_graph:
+                    reverse_graph[neighbor] = {}
+                reverse_graph[neighbor][grid] = cost
+        forward_graph.clear()
+
+        # Initialize search state.
+        queue: List[Tuple[Tuple[float, float], Vector3]] = [((0, 0), self.target_grid)]
+        costs: Dict[Vector3, Tuple[float, float]] = {self.target_grid: (0, 0)}
+        parents: Dict[Vector3, Union[Vector3, None]] = {self.target_grid: None}
+
+        # Run Dijkstra's search.
+        while queue:
+            cost, grid = heapq.heappop(queue)
+            for neighbor in reverse_graph[grid]:
+                if neighbor not in costs:
+                    costs[neighbor] = (float("inf"), float("inf"))
+                new_cost = (
+                    costs[grid][0] + reverse_graph[grid][neighbor][0],
+                    costs[grid][1] + reverse_graph[grid][neighbor][1],
+                )
+                if new_cost < costs[neighbor]:
+                    parents[neighbor] = grid
+                    costs[neighbor] = new_cost
+                    heapq.heappush(queue, (new_cost, neighbor))
+
+        return parents
+
+    def grids(self) -> Generator[Vector3, None, None]:
+        """
+        Yields all grid positions within the bounds of the dimensions.
+        """
+        lower_bound = self.position_to_grid(
+            Vector3(-self.dimensions.x / 2, -self.dimensions.y / 2, 0)
         )
-
-    def search(self) -> List[Vector3]:
-        """
-        Searches for the best path to the target grid position from the current grid position using
-        A* search. If it is not possible to reach the target grid position, the path that gets
-        closest is returned. The returned path is a list of grid positions.
-        """
-        # Do not perform search unless we know the current grid position.
-        if self.current_grid is None:
-            return []
-
-        # Initialize A* search state.
-        open_set: List[Tuple[float, Vector3]] = [
-            (self.search_h(self.current_grid, self.target_grid), self.current_grid)
-        ]
-        came_from: Dict[Vector3, Union[Vector3, None]] = {self.current_grid: None}
-        g_score: Dict[Vector3, float] = {self.current_grid: 0}
-
-        # Run A* search.
-        while open_set:
-            _, current = heapq.heappop(open_set)
-            if current == self.target_grid:
-                break
-            for neighbor in self.neighbors(current):
-                if neighbor not in g_score:
-                    g_score[neighbor] = float("inf")
-                tentative_g_score = g_score[current] + self.search_g(current, neighbor)
-                if tentative_g_score < g_score[neighbor]:
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g_score
-                    heapq.heappush(
-                        open_set,
-                        (
-                            tentative_g_score
-                            + self.search_h(neighbor, self.target_grid),
-                            neighbor,
-                        ),
-                    )
-
-        # The target is not always reachable. Find the reachable grid position that is closest to
-        # the target grid position.
-        current = min(
-            came_from, key=lambda grid: self.grid_distance(grid, self.target_grid)
+        upper_bound = self.position_to_grid(
+            Vector3(self.dimensions.x / 2, self.dimensions.y / 2, self.dimensions.z)
         )
-
-        # Reconstruct the path.
-        path = []
-        while current is not None:
-            path.append(current)
-            current = came_from[current]
-        path.reverse()
-
-        return path
+        for x in range(int(lower_bound.x) + 1, int(upper_bound.x)):
+            for y in range(int(lower_bound.y) + 1, int(upper_bound.y)):
+                for z in range(int(lower_bound.z), int(upper_bound.z)):
+                    yield Vector3(x, y, z)
 
     def neighbors(self, grid: Vector3) -> Generator[Vector3, None, None]:
         """
-        Returns valid neighbors of the given grid position.
+        Yields valid neighbors of the given grid position.
         """
         # Yield vertical neighbors if they are in bounds.
         for dz in (-1, 1):
@@ -490,7 +479,7 @@ class SearchPositionController:
                 yield n
 
         # Evaluate the wind field at the given grid position.
-        wind = self.get_wind(grid)
+        wind = self.wind_field(self.grid_to_position(grid))
 
         # If the wind field is too close to zero at this grid position, assume no horizontal
         # neighbors because it is a dead zone.
