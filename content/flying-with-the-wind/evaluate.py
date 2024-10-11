@@ -1,19 +1,19 @@
 import multiprocessing
+import os
+from functools import partial
 
 import numpy as np
-import os
 from balloon import Balloon
 from controller import (
     GreedyPositionController,
     SearchPositionController,
     VerticalPositionController,
 )
-from field import make_random_field
+from field import RandomField
 from monitor import Monitor
 from simulation import run
 from tqdm import tqdm
 from vector import Vector3
-from functools import partial
 
 
 def penalty(target: Vector3, monitor: Monitor) -> float:
@@ -33,15 +33,15 @@ def evaluate_one(controller_type, seed):
     magnitude = Vector3(10.0, 10.0, 0.0)
     dimensions = Vector3(4000.0, 4000.0, 2000.0)
     num_dimension_points = Vector3(20, 20, 10)
+    wind_field = RandomField(
+        magnitude, dimensions, num_dimension_points, generator=generator
+    )
 
     theta = generator.uniform(0, 2 * np.pi)
     x = 2000.0 * np.cos(theta)
     y = 2000.0 * np.sin(theta)
     target = Vector3(x, y, 500.0)
 
-    wind_field = make_random_field(
-        magnitude, dimensions, num_dimension_points, generator=generator
-    )
     if controller_type == "VerticalPositionController":
         controller = VerticalPositionController(500)
     elif controller_type == "SearchPositionController":
@@ -79,4 +79,3 @@ if __name__ == "__main__":
     print(evaluate("VerticalPositionController"))
     print(evaluate("GreedyPositionController"))
     print(evaluate("SearchPositionController"))
-

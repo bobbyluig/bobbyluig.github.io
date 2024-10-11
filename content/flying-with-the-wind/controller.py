@@ -1,14 +1,14 @@
+import functools
 import heapq
 import math
+import os
 from dataclasses import dataclass
 from typing import Callable, Dict, Generator, List, Tuple, Union
-import functools
 
 from balloon import Balloon
 from field import Field3
 from simple_pid import PID
 from vector import Vector3
-import os
 
 
 @dataclass
@@ -218,7 +218,7 @@ class GreedyPositionController:
         target: Vector3,
         dimensions: Vector3,
         wind_field: Field3,
-        grid_size: int = 100,
+        grid_size: Vector3 = Vector3(100, 100, 100),
     ):
         """
         Initializes the controller with the given tuning parameters.
@@ -226,7 +226,7 @@ class GreedyPositionController:
         self.target: Vector3 = target
         self.dimensions: Vector3 = dimensions
         self.wind_field: Field3 = functools.lru_cache(maxsize=None)(wind_field)
-        self.grid_size: int = grid_size
+        self.grid_size: Vector3 = grid_size
 
         self.controller: Union[VerticalPositionController, None] = None
 
@@ -234,37 +234,36 @@ class GreedyPositionController:
         """
         Returns the controller output for the given input.
         """
-        # Compute the vector from position to target.
-        v_target = Vector3(
-            self.target.x - input.position.x, self.target.y - input.position.y, 0
-        )
-
-        # If the target is within the grid size, then just target the vertical position.
-        if v_target.magnitude() <= self.grid_size:
+        # If the ballon is in the same horizontal grid position as the target, then just target the 
+        # vertical position.
+        position_grid = self.position_to_grid(input.position)
+        target_grid = self.position_to_grid(self.target)
+        if position_grid.x == target_grid.x and position_grid.y == target_grid.y:
             self.controller = VerticalPositionController(self.target.z)
             return self.controller(input)
 
+        # Compute the normalized vector from position to target.
+        v_target = Vector3(
+            self.target.x - input.position.x, self.target.y - input.position.y, 0
+        ).normalize()
+
         # Use cosine similarity to find the best vertical position.
-        v_target = v_target.normalize()
-        best_z = self.grid_size // 2
+        best_grid = position_grid
         best_similarity = -float("inf")
 
-        for z in range(self.grid_size // 2, int(self.dimensions.z + 1), self.grid_size):
-            v_wind = self.wind_field(
-                Vector3(
-                    self.round_to_grid(input.position.x),
-                    self.round_to_grid(input.position.y),
-                    z,
-                )
-            )
+        current_grid = self.position_to_grid(input.position)
+        for z in range(0, int(self.dimensions.z // self.grid_size.z)):
+            test_grid = Vector3(current_grid.x, current_grid.y, z)
+            v_wind = self.wind_field(self.grid_to_position(test_grid))
             v_wind = Vector3(v_wind.x, v_wind.y, 0).normalize()
 
             similarity = v_wind.dot(v_target)
             if similarity > best_similarity:
                 best_similarity = similarity
-                best_z = z
+                best_grid = test_grid
 
         # If we are already targeting the best vertical position, then use the existing controller.
+        best_z = self.grid_to_position(best_grid).z
         if self.controller is not None and best_z == self.controller.target:
             return self.controller(input)
 
@@ -273,11 +272,21 @@ class GreedyPositionController:
         self.controller = VerticalPositionController(best_z)
         return self.controller(input)
 
-    def round_to_grid(self, x: float) -> float:
+    def position_to_grid(self, position: Vector3) -> Vector3:
         """
-        Rounds a value to the nearest grid position.
+        Converts the given position to a discretized grid position.
         """
-        return round(x / self.grid_size) * self.grid_size
+        return Vector3(
+            int(position.x // self.grid_size.x),
+            int(position.y // self.grid_size.y),
+            int(position.z // self.grid_size.z),
+        )
+
+    def grid_to_position(self, grid: Vector3) -> Vector3:
+        """
+        Converts the given grid position to a continuous position in the middle of the grid.
+        """
+        return grid * self.grid_size + self.grid_size / 2
 
 
 class SearchPositionController:

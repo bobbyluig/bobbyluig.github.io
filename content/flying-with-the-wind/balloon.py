@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 import numpy.typing as npt
-from field import Field3, make_uniform_field
+from field import Field3, UniformField
 from scipy.integrate import odeint
 from vector import Vector3
 
@@ -27,7 +27,7 @@ class Balloon:
     k_ratio_fuel = 4870.0  # %
     k_ratio_vent = 1485.0  # %
 
-    def __init__(self, wind_field: Field3 = make_uniform_field(Vector3(0.0, 0.0, 0.0))):
+    def __init__(self, wind_field: Field3 = UniformField(Vector3(0.0, 0.0, 0.0))):
         """
         Initializes the balloon with the given acceleration field.
         """

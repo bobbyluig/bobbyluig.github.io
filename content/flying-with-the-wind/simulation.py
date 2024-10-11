@@ -12,7 +12,7 @@ from controller import (
     apply_controller_output,
     get_controller_input,
 )
-from field import make_random_field
+from field import RandomField
 from monitor import Monitor
 from tqdm import tqdm
 from vector import Vector3
@@ -56,7 +56,7 @@ def run_reference_simulation() -> Monitor:
     time_step = dt * tr
 
     balloon = Balloon(
-        make_random_field(
+        RandomField(
             Vector3(5.0, 5.0, 0.0),
             Vector3(10000.0, 10000.0, 10000.0),
             Vector3(10, 10, 10),
@@ -108,7 +108,7 @@ def run_position_simulation(
     magnitude = Vector3(5.0, 5.0, 0.0)
     dimensions = Vector3(10000.0, 10000.0, 2000.0)
     num_dimension_points = Vector3(10, 10, 5)
-    wind_field = make_random_field(
+    wind_field = RandomField(
         magnitude, dimensions, num_dimension_points, generator=generator
     )
 
