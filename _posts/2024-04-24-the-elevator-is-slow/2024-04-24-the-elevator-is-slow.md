@@ -220,116 +220,14 @@ It is interesting to see how living on different floors of the building affect t
 
 {% raw %}
 <div class="chart" id="chart-floor-latency-mean-max"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    chart('chart-floor-latency-mean-max', {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'shadow'
-        },
-        valueFormatter: (value) => value.toFixed(2),
-      },
-      grid: {
-        left: 30,
-        top: 40,
-        right: 10,
-        bottom: 25,
-        containLabel: true,
-      },
-      legend: {},
-      xAxis: [
-        {
-          type: 'category',
-          data: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
-          name: 'Floor',
-          nameLocation: 'center',
-          nameGap: 30,
-        },
-      ],
-      yAxis: [
-        {
-          type: 'value',
-          name: 'Latency (s)',
-          nameLocation: 'center',
-          nameGap: 40,
-        },
-      ],
-      series: [
-        {
-          name: 'Mean',
-          type: 'bar',
-          data: [38.70291918383377, 40.68860665516036, 42.65609258123861, 44.76554586575107, 46.471043307795675, 48.44538091897792, 50.26455864726403, 53.00678411862765, 54.41530391970092, 56.719102754388146, 58.70396701055558, 61.101082047403814, 63.86222393886232, 66.62162959382948, 68.47235843364575, 71.62452590066998, 74.07766553082584]
-        },
-        {
-          name: 'Max',
-          type: 'bar',
-          data: [133.37152319849702, 149.5396094409516, 149.52741525904275, 159.82521815155633, 148.14974494627677, 141.87939180643298, 138.72756127710454, 174.47362796554808, 157.35112143610604, 168.0848355323542, 145.21891872095875, 156.69267152022803, 178.90530922776088, 180.5266194837168, 176.50148904777598, 186.59320912277326, 183.14009668445215]
-        },
-      ],
-    });
-  });
-</script>
+<script defer src="chart-floor-latency-mean-max.js"></script>
 {% endraw %}
 
 There is around half a minute of difference in the mean request latencies between floor 4 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latency and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
 
 {% raw %}
 <div class="chart" id="chart-floor-latency-histogram"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    chart('chart-floor-latency-histogram', {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'shadow'
-        },
-      },
-      grid: {
-        left: 30,
-        top: 40,
-        right: 10,
-        bottom: 25,
-        containLabel: true,
-      },
-      legend: {},
-      xAxis: [
-        {
-          type: 'category',
-          data: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180],
-          name: 'Latency (s)',
-          nameLocation: 'center',
-          nameGap: 30,
-        },
-      ],
-      yAxis: [
-        {
-          type: 'value',
-          name: 'Count',
-          nameLocation: 'center',
-          nameGap: 50,
-        },
-      ],
-      series: [
-        {
-          name: 'Floor 4',
-          type: 'bar',
-          data: [4, 1636, 1453, 974, 463, 237, 121, 53, 36, 8, 5, 6, 4, 0, 0, 0, 0, 0]
-        },
-        {
-          name: 'Floor 12',
-          type: 'bar',
-          data: [0, 2, 1014, 1364, 1153, 638, 342, 217, 131, 73, 39, 15, 9, 1, 2, 0, 0, 0]
-        },
-        {
-          name: 'Floor 20',
-          type: 'bar',
-          data: [0, 0, 0, 659, 846, 923, 995, 538, 428, 233, 177, 98, 42, 36, 20, 2, 2, 1]
-        }
-      ]
-    });
-  });
-</script>
+<script defer src="chart-floor-latency-histogram.js"></script>
 {% endraw %}
 
 In the histogram above, we show the latencies of the middle 5k requests (when the system is closer to steady state) for the lowest, middle, and highest residential floors. The fastest way for a request to be fulfilled is for an elevator to already be on the starting floor, accept one request, and then for the elevator to travel to the ending floor uninterrupted. We do see a small percentage of requests that get fairly close to the theoretical minimum latency for their floors.
@@ -340,56 +238,7 @@ There are frequently residents moving in to or out of the building. When that ha
 
 {% raw %}
 <div class="chart" id="chart-elevator-count"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    chart('chart-elevator-count', {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'shadow'
-        },
-        valueFormatter: (value) => value.toFixed(2),
-      },
-      grid: {
-        left: 30,
-        top: 40,
-        right: 10,
-        bottom: 25,
-        containLabel: true,
-      },
-      legend: {},
-      xAxis: [
-        {
-          type: 'category',
-          data: [1, 2, 3, 4, 5],
-          name: 'Number of Elevators',
-          nameLocation: 'center',
-          nameGap: 30,
-        },
-      ],
-      yAxis: [
-        {
-          type: 'value',
-          name: 'Latency (s)',
-          nameLocation: 'center',
-          nameGap: 40,
-        },
-      ],
-      series: [
-        {
-          name: 'Mean',
-          type: 'bar',
-          data: [117.954068641431, 55.29700344923757, 46.57176647707238, 44.015681663871305, 42.75975713609125]
-        },
-        {
-          name: 'Max',
-          type: 'bar',
-          data: [414.3429391204845, 186.59320912277326, 157.90575060830452, 141.0790516170673, 138.57926610531285]
-        },
-      ],
-    });
-  });
-</script>
+<script defer src="chart-elevator-count.js"></script>
 {% endraw %}
 
 We see that there are diminishing returns when using more than two elevators, but only having one elevator increases both the mean and max latencies by more than a factor of two. This definitely matches my empirical observations of occasionally having to wait a few minutes before the elevator will even arrive on my floor if the other elevator is reserved.
@@ -400,58 +249,7 @@ We can find the max throughput of the elevator system by comparing the mean requ
 
 {% raw %}
 <div class="chart" id="chart-system-throughput"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    chart('chart-system-throughput', {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'shadow',
-        },
-        valueFormatter: (value) => value.toFixed(3),
-      },
-      grid: {
-        left: 30,
-        top: 40,
-        right: 10,
-        bottom: 25,
-        containLabel: true,
-      },
-      legend: {},
-      xAxis: [
-        {
-          type: 'category',
-          data: [20, 19, 18, 17, 16, 15],
-          name: 'Mean Time Between Requests (s)',
-          nameLocation: 'center',
-          nameGap: 30,
-        },
-      ],
-      yAxis: [
-        {
-          type: 'value',
-          name: 'Ratio',
-          nameLocation: 'center',
-          nameGap: 35,
-        },
-      ],
-      series: [
-        {
-          name: 'Ratio',
-          type: 'bar',
-          data: [
-            186.1835094959234 / 186.31329990812952,
-            215.82737066987357 / 214.49205722318948,
-            304.7135737046539 / 306.52797741267506,
-            26585.631230024308 / 12543.125026929107,
-            93040.87735298941 / 45249.710744333715,
-            160528.16941428368 / 79523.81772432546,
-          ],
-        },
-      ]
-    });
-  });
-</script>
+<script defer src="chart-system-throughput.js"></script>
 {% endraw %}
 
 We see that from the chart above that the max throughput is around 18 seconds between requests, or 3.33 requests per minute for the default parameters. At this rate, each request takes an average of 5 minutes to get from the starting floor to the ending floor. If we assume that the building has around 200 residents, and all of them need to use the elevator within a one hour window, then we actually get fairly close to the max throughput of the system.
@@ -462,58 +260,7 @@ One last analysis that we want to perform is to see which parameter has the larg
 
 {% raw %}
 <div class="chart" id="chart-system-parameter"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    chart('chart-system-parameter', {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'shadow',
-        },
-        valueFormatter: (value) => value.toFixed(3),
-      },
-      grid: {
-        left: 30,
-        top: 40,
-        right: 10,
-        bottom: 25,
-        containLabel: true,
-      },
-      legend: {},
-      xAxis: [
-        {
-          type: 'category',
-          data: ['e_vel','e_d_vel',  'e_d_wai', 'e_acc', 'p_vel', 'e_cap'],
-          name: 'Parameter',
-          nameLocation: 'center',
-          nameGap: 30,
-        }
-      ],
-      yAxis: [
-        {
-          type: 'value',
-          name: 'Ratio',
-          nameLocation: 'center',
-          nameGap: 35,
-        },
-      ],
-      series: [
-        {
-          name: 'Ratio',
-          type: 'bar',
-          data: [
-            37.8393639353616 / 55.29700344923757, 
-            47.448846883705926 / 55.29700344923757,
-            49.923684426869826 / 55.29700344923757,
-            50.897573266073756 / 55.29700344923757,
-            53.39151825313947 / 55.29700344923757,
-            55.29700344923757 / 55.29700344923757,
-          ],
-        }
-      ]
-    });
-  });
-</script>
+<script defer src="chart-system-parameter.js"></script>
 {% endraw %}
 
 Increasing the velocity of the elevator helps the most. This makes sense since a majority of each trip is spent waiting for the elevator to travel between floors. Increasing the capacity is not effective because there are no cases for the default distribution and arrival rate where the elevator is full. Surprisingly, reducing the wait time of the elevator door by half decreases the mean request latency by around 10%. This is actually something that we can adjust in the real world by pressing the door close button!
