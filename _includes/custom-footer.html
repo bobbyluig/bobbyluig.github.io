@@ -42,11 +42,14 @@
 {% endif %}
 
 {% if page.features contains "chart" %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script>
-  Chart.defaults.color = '#111111';
-  Chart.defaults.animation = false;
-  Chart.defaults.font.family = 'Roboto, sans-serif';
-  Chart.defaults.font.size = 16;
+  function chart(id, options) {
+    const chart = echarts.init(document.getElementById(id));
+    chart.setOption(options);
+    window.addEventListener('resize', function() {
+      chart.resize();
+    });
+  }
 </script>
 {% endif %}

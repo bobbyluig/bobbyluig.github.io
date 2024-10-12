@@ -50,6 +50,7 @@ def evaluate_one(controller_type, seed):
         controller = GreedyPositionController(target, dimensions, wind_field)
     else:
         raise ValueError(f"Unknown controller type {controller_type}")
+    
     monitor = run(
         balloon=Balloon(wind_field),
         controller=controller,

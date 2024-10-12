@@ -219,41 +219,54 @@ With the simulation built, we can now analyze various aspects of the elevator sy
 It is interesting to see how living on different floors of the building affect the overall time spent in the elevator. We show the mean and max latencies of requests grouped by each floor (i.e., requests that start or end at a given floor fall into the group for that floor). 
 
 {% raw %}
-<div class="chart"><canvas id="chart-floor-latency-mean-max"></canvas></div>
+<div class="chart" id="chart-floor-latency-mean-max"></div>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    new Chart(document.getElementById('chart-floor-latency-mean-max'), {
-      type: 'bar',
-      data: {
-        labels: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
-        datasets: [
-          {
-            label: 'Mean',
-            data: [38.70291918383377, 40.68860665516036, 42.65609258123861, 44.76554586575107, 46.471043307795675, 48.44538091897792, 50.26455864726403, 53.00678411862765, 54.41530391970092, 56.719102754388146, 58.70396701055558, 61.101082047403814, 63.86222393886232, 66.62162959382948, 68.47235843364575, 71.62452590066998, 74.07766553082584],
-          },
-          {
-            label: 'Max',
-            data: [133.37152319849702, 149.5396094409516, 149.52741525904275, 159.82521815155633, 148.14974494627677, 141.87939180643298, 138.72756127710454, 174.47362796554808, 157.35112143610604, 168.0848355323542, 145.21891872095875, 156.69267152022803, 178.90530922776088, 180.5266194837168, 176.50148904777598, 186.59320912277326, 183.14009668445215],
-          },
-        ]
-      },
-      options: {
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Floor',
-            },
-          },
-          y: {
-            beginAtZero: false,
-            title: {
-              display: true,
-              text: 'Latency (s)',
-            },
-          },
+    chart('chart-floor-latency-mean-max', {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
         },
-      }
+        valueFormatter: (value) => value.toFixed(2),
+      },
+      grid: {
+        left: 30,
+        top: 40,
+        right: 10,
+        bottom: 25,
+        containLabel: true,
+      },
+      legend: {},
+      xAxis: [
+        {
+          type: 'category',
+          data: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+          name: 'Floor',
+          nameLocation: 'center',
+          nameGap: 30,
+        },
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          name: 'Latency (s)',
+          nameLocation: 'center',
+          nameGap: 40,
+        },
+      ],
+      series: [
+        {
+          name: 'Mean',
+          type: 'bar',
+          data: [38.70291918383377, 40.68860665516036, 42.65609258123861, 44.76554586575107, 46.471043307795675, 48.44538091897792, 50.26455864726403, 53.00678411862765, 54.41530391970092, 56.719102754388146, 58.70396701055558, 61.101082047403814, 63.86222393886232, 66.62162959382948, 68.47235843364575, 71.62452590066998, 74.07766553082584]
+        },
+        {
+          name: 'Max',
+          type: 'bar',
+          data: [133.37152319849702, 149.5396094409516, 149.52741525904275, 159.82521815155633, 148.14974494627677, 141.87939180643298, 138.72756127710454, 174.47362796554808, 157.35112143610604, 168.0848355323542, 145.21891872095875, 156.69267152022803, 178.90530922776088, 180.5266194837168, 176.50148904777598, 186.59320912277326, 183.14009668445215]
+        },
+      ],
     });
   });
 </script>
@@ -262,44 +275,58 @@ It is interesting to see how living on different floors of the building affect t
 There is around half a minute of difference in the mean request latencies between floor 4 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latency and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
 
 {% raw %}
-<div class="chart"><canvas id="chart-floor-latency-histogram"></canvas></div>
+<div class="chart" id="chart-floor-latency-histogram"></div>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    new Chart(document.getElementById('chart-floor-latency-histogram'), {
-      type: 'bar',
-      data: {
-        labels: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180],
-        datasets: [
-          {
-            label: 'Floor 4',
-            data: [4, 1636, 1453, 974, 463, 237, 121, 53, 36, 8, 5, 6, 4, 0, 0, 0, 0, 0],
-          },
-          {
-            label: 'Floor 12',
-            data: [0, 2, 1014, 1364, 1153, 638, 342, 217, 131, 73, 39, 15, 9, 1, 2, 0, 0, 0],
-          },
-          {
-            label: 'Floor 20',
-            data: [0, 0, 0, 659, 846, 923, 995, 538, 428, 233, 177, 98, 42, 36, 20, 2, 2, 1],
-          },
-        ]
-      },
-      options: {
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Latency (s)',
-            },
-          },
-          y: {
-            title: {
-              display: true,
-              text: 'Count',
-            },
-          },
+    chart('chart-floor-latency-histogram', {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
         },
-      }
+      },
+      grid: {
+        left: 30,
+        top: 40,
+        right: 10,
+        bottom: 25,
+        containLabel: true,
+      },
+      legend: {},
+      xAxis: [
+        {
+          type: 'category',
+          data: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180],
+          name: 'Latency (s)',
+          nameLocation: 'center',
+          nameGap: 30,
+        },
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          name: 'Count',
+          nameLocation: 'center',
+          nameGap: 50,
+        },
+      ],
+      series: [
+        {
+          name: 'Floor 4',
+          type: 'bar',
+          data: [4, 1636, 1453, 974, 463, 237, 121, 53, 36, 8, 5, 6, 4, 0, 0, 0, 0, 0]
+        },
+        {
+          name: 'Floor 12',
+          type: 'bar',
+          data: [0, 2, 1014, 1364, 1153, 638, 342, 217, 131, 73, 39, 15, 9, 1, 2, 0, 0, 0]
+        },
+        {
+          name: 'Floor 20',
+          type: 'bar',
+          data: [0, 0, 0, 659, 846, 923, 995, 538, 428, 233, 177, 98, 42, 36, 20, 2, 2, 1]
+        }
+      ]
     });
   });
 </script>
@@ -312,40 +339,54 @@ In the histogram above, we show the latencies of the middle 5k requests (when th
 There are frequently residents moving in to or out of the building. When that happens, one of the two elevators becomes reserved for a few hours and cannot be used for serving normal requests. We show the request latencies as a function of the number of elevators in the chart below. Mean and max values are computed from all requests regardless of starting and ending floor.
 
 {% raw %}
-<div class="chart"><canvas id="chart-elevator-count"></canvas></div>
+<div class="chart" id="chart-elevator-count"></div>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    new Chart(document.getElementById('chart-elevator-count'), {
-      type: 'bar',
-      data: {
-        labels: [1, 2, 3, 4, 5],
-        datasets: [
-          {
-            label: 'Mean',
-            data: [117.954068641431, 55.29700344923757, 46.57176647707238, 44.015681663871305, 42.75975713609125],
-          },
-          {
-            label: 'Max',
-            data: [414.3429391204845, 186.59320912277326, 157.90575060830452, 141.0790516170673, 138.57926610531285],
-          },
-        ]
-      },
-      options: {
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Number of Elevators',
-            },
-          },
-          y: {
-            title: {
-              display: true,
-              text: 'Latency (s)',
-            },
-          },
+    chart('chart-elevator-count', {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
         },
-      }
+        valueFormatter: (value) => value.toFixed(2),
+      },
+      grid: {
+        left: 30,
+        top: 40,
+        right: 10,
+        bottom: 25,
+        containLabel: true,
+      },
+      legend: {},
+      xAxis: [
+        {
+          type: 'category',
+          data: [1, 2, 3, 4, 5],
+          name: 'Number of Elevators',
+          nameLocation: 'center',
+          nameGap: 30,
+        },
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          name: 'Latency (s)',
+          nameLocation: 'center',
+          nameGap: 40,
+        },
+      ],
+      series: [
+        {
+          name: 'Mean',
+          type: 'bar',
+          data: [117.954068641431, 55.29700344923757, 46.57176647707238, 44.015681663871305, 42.75975713609125]
+        },
+        {
+          name: 'Max',
+          type: 'bar',
+          data: [414.3429391204845, 186.59320912277326, 157.90575060830452, 141.0790516170673, 138.57926610531285]
+        },
+      ],
     });
   });
 </script>
@@ -358,44 +399,56 @@ We see that there are diminishing returns when using more than two elevators, bu
 We can find the max throughput of the elevator system by comparing the mean request latencies between 200k requests and 100k requests. Below the threshold, we expect the ratio to be close to one. Above the threshold, we expect the ratio to be much larger than one because requests are arriving faster than the system can process them. As a result, more simulated requests lead to higher mean latencies.
 
 {% raw %}
-<div class="chart"><canvas id="chart-system-throughput"></canvas></div>
+<div class="chart" id="chart-system-throughput"></div>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    new Chart(document.getElementById('chart-system-throughput'), {
-      type: 'bar',
-      data: {
-        labels: [20, 19, 18, 17, 16, 15],
-        datasets: [
-          {
-            label: 'Dataset',
-            data: [
-              186.1835094959234 / 186.31329990812952,
-              215.82737066987357 / 214.49205722318948,
-              304.7135737046539 / 306.52797741267506,
-              26585.631230024308 / 12543.125026929107,
-              93040.87735298941 / 45249.710744333715,
-              160528.16941428368  /79523.81772432546,
-            ],
-          },
-        ]
-      },
-      options: {
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Mean Time Between Requests (s)',
-            },
-          },
-          y: {
-            beginAtZero: false,
-            title: {
-              display: true,
-              text: 'Ratio',
-            },
-          },
+    chart('chart-system-throughput', {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow',
         },
-      }
+        valueFormatter: (value) => value.toFixed(3),
+      },
+      grid: {
+        left: 30,
+        top: 40,
+        right: 10,
+        bottom: 25,
+        containLabel: true,
+      },
+      legend: {},
+      xAxis: [
+        {
+          type: 'category',
+          data: [20, 19, 18, 17, 16, 15],
+          name: 'Mean Time Between Requests (s)',
+          nameLocation: 'center',
+          nameGap: 30,
+        },
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          name: 'Ratio',
+          nameLocation: 'center',
+          nameGap: 35,
+        },
+      ],
+      series: [
+        {
+          name: 'Ratio',
+          type: 'bar',
+          data: [
+            186.1835094959234 / 186.31329990812952,
+            215.82737066987357 / 214.49205722318948,
+            304.7135737046539 / 306.52797741267506,
+            26585.631230024308 / 12543.125026929107,
+            93040.87735298941 / 45249.710744333715,
+            160528.16941428368 / 79523.81772432546,
+          ],
+        },
+      ]
     });
   });
 </script>
@@ -408,44 +461,56 @@ We see that from the chart above that the max throughput is around 18 seconds be
 One last analysis that we want to perform is to see which parameter has the largest impact on mean request latency. To measure this, we will double or halve parameters in a direction that reduces latency and compare the their mean request latencies against the baseline. The results are shown in the chart below and sorted based on latency reduction.
 
 {% raw %}
-<div class="chart"><canvas id="chart-system-parameter"></canvas></div>
+<div class="chart" id="chart-system-parameter"></div>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    new Chart(document.getElementById('chart-system-parameter'), {
-      type: 'bar',
-      data: {
-        labels: ['e_vel','e_d_vel',  'e_d_wai', 'e_acc', 'p_vel', 'e_cap'],
-        datasets: [
-          {
-            label: 'Dataset',
-            data: [
-              37.8393639353616 / 55.29700344923757, 
-              47.448846883705926 / 55.29700344923757,
-              49.923684426869826 / 55.29700344923757,
-              50.897573266073756 / 55.29700344923757,
-              53.39151825313947 / 55.29700344923757,
-              55.29700344923757 / 55.29700344923757,
-            ],
-          },
-        ]
-      },
-      options: {
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Parameter',
-            },
-          },
-          y: {
-            beginAtZero: false,
-            title: {
-              display: true,
-              text: 'Ratio',
-            },
-          },
+    chart('chart-system-parameter', {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow',
         },
-      }
+        valueFormatter: (value) => value.toFixed(3),
+      },
+      grid: {
+        left: 30,
+        top: 40,
+        right: 10,
+        bottom: 25,
+        containLabel: true,
+      },
+      legend: {},
+      xAxis: [
+        {
+          type: 'category',
+          data: ['e_vel','e_d_vel',  'e_d_wai', 'e_acc', 'p_vel', 'e_cap'],
+          name: 'Parameter',
+          nameLocation: 'center',
+          nameGap: 30,
+        }
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          name: 'Ratio',
+          nameLocation: 'center',
+          nameGap: 35,
+        },
+      ],
+      series: [
+        {
+          name: 'Ratio',
+          type: 'bar',
+          data: [
+            37.8393639353616 / 55.29700344923757, 
+            47.448846883705926 / 55.29700344923757,
+            49.923684426869826 / 55.29700344923757,
+            50.897573266073756 / 55.29700344923757,
+            53.39151825313947 / 55.29700344923757,
+            55.29700344923757 / 55.29700344923757,
+          ],
+        }
+      ]
     });
   });
 </script>
