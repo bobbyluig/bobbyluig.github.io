@@ -1,4 +1,5 @@
-chart('chart-system-throughput', {
+const chart = echarts.init(document.getElementById('chart-system-throughput'));
+chart.setOption({
   tooltip: {
     trigger: 'axis',
     axisPointer: {

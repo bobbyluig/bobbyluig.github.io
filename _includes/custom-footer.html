@@ -31,7 +31,7 @@
 {% if page.features contains "mermaid" %}
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({ 
+  mermaid.initialize({
     startOnLoad: true,
     flowchart: {
       diagramPadding: 1,
@@ -44,12 +44,15 @@
 {% if page.features contains "chart" %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script>
-  function chart(id, options) {
-    const chart = echarts.init(document.getElementById(id));
-    chart.setOption(options);
-    window.addEventListener('resize', function() {
-      chart.resize();
-    });
-  }
+  (function () {
+    const init = echarts.init;
+    echarts.init = function (dom, theme, opts) {
+      const chart = init(dom, theme, opts);
+      window.addEventListener('resize', function () {
+        chart.resize();
+      });
+      return chart;
+    };
+  })();
 </script>
 {% endif %}

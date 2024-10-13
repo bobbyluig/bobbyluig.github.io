@@ -220,14 +220,14 @@ It is interesting to see how living on different floors of the building affect t
 
 {% raw %}
 <div class="chart" id="chart-floor-latency-mean-max" style="aspect-ratio: 2"></div>
-<script defer src="chart-floor-latency-mean-max.js"></script>
+<script src="chart-floor-latency-mean-max.js" type="module"></script>
 {% endraw %}
 
 There is around half a minute of difference in the mean request latencies between floor 4 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latency and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
 
 {% raw %}
 <div class="chart" id="chart-floor-latency-histogram" style="aspect-ratio: 2"></div>
-<script defer src="chart-floor-latency-histogram.js"></script>
+<script src="chart-floor-latency-histogram.js" type="module"></script>
 {% endraw %}
 
 In the histogram above, we show the latencies of the middle 5k requests (when the system is closer to steady state) for the lowest, middle, and highest residential floors. The fastest way for a request to be fulfilled is for an elevator to already be on the starting floor, accept one request, and then for the elevator to travel to the ending floor uninterrupted. We do see a small percentage of requests that get fairly close to the theoretical minimum latency for their floors.
@@ -238,7 +238,7 @@ There are frequently residents moving in to or out of the building. When that ha
 
 {% raw %}
 <div class="chart" id="chart-elevator-count" style="aspect-ratio: 2"></div>
-<script defer src="chart-elevator-count.js"></script>
+<script src="chart-elevator-count.js" type="module"></script>
 {% endraw %}
 
 We see that there are diminishing returns when using more than two elevators, but only having one elevator increases both the mean and max latencies by more than a factor of two. This definitely matches my empirical observations of occasionally having to wait a few minutes before the elevator will even arrive on my floor if the other elevator is reserved.
@@ -249,7 +249,7 @@ We can find the max throughput of the elevator system by comparing the mean requ
 
 {% raw %}
 <div class="chart" id="chart-system-throughput" style="aspect-ratio: 2"></div>
-<script defer src="chart-system-throughput.js"></script>
+<script src="chart-system-throughput.js" type="module"></script>
 {% endraw %}
 
 We see that from the chart above that the max throughput is around 18 seconds between requests, or 3.33 requests per minute for the default parameters. At this rate, each request takes an average of 5 minutes to get from the starting floor to the ending floor. If we assume that the building has around 200 residents, and all of them need to use the elevator within a one hour window, then we actually get fairly close to the max throughput of the system.
@@ -260,7 +260,7 @@ One last analysis that we want to perform is to see which parameter has the larg
 
 {% raw %}
 <div class="chart" id="chart-system-parameter" style="aspect-ratio: 2"></div>
-<script defer src="chart-system-parameter.js"></script>
+<script src="chart-system-parameter.js" type="module"></script>
 {% endraw %}
 
 Increasing the velocity of the elevator helps the most. This makes sense since a majority of each trip is spent waiting for the elevator to travel between floors. Increasing the capacity is not effective because there are no cases for the default distribution and arrival rate where the elevator is full. Surprisingly, reducing the wait time of the elevator door by half decreases the mean request latency by around 10%. This is actually something that we can adjust in the real world by pressing the door close button!

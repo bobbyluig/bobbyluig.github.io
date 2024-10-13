@@ -1,4 +1,5 @@
-chart('chart-elevator-count', {
+const chart = echarts.init(document.getElementById('chart-elevator-count'));
+chart.setOption({
   tooltip: {
     trigger: 'axis',
     axisPointer: {

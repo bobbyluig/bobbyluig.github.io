@@ -1,4 +1,5 @@
-chart('chart-floor-latency-histogram', {
+const chart = echarts.init(document.getElementById('chart-floor-latency-histogram'));
+chart.setOption({
   tooltip: {
     trigger: 'axis',
     axisPointer: {

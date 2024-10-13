@@ -1,4 +1,5 @@
-chart('chart-system-parameter', {
+const chart = echarts.init(document.getElementById('chart-system-parameter'));
+chart.setOption({
   tooltip: {
     trigger: 'axis',
     axisPointer: {

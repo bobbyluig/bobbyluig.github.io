@@ -1,4 +1,5 @@
-chart('chart-floor-latency-mean-max', {
+const chart = echarts.init(document.getElementById('chart-floor-latency-mean-max'));
+chart.setOption({
   tooltip: {
     trigger: 'axis',
     axisPointer: {
