@@ -22,7 +22,7 @@
 {% endif %}
 
 {% if page.features contains "highlight" %}
-<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js'></script>
 <script>
   hljs.highlightAll();
 </script>
@@ -43,6 +43,7 @@
 
 {% if page.features contains "chart" %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
 <script>
   (function () {
     const init = echarts.init;

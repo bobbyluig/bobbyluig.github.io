@@ -416,9 +416,14 @@ class SearchPositionController:
         """
         Searches for the lowest cost path from all grid positions to the target using Dijkstra's
         algorithm. Builds a previous map of the reverse graph. If the target is not reachable, then
-        the closest reachable position is targeted instead.
+        the closest reachable position is targeted instead. Returns a map of grid positions to the
+        next grid position in the path.
         """
-        # Build the forward graph.
+        # Build the forward graph. Every grid position is connected to the unreachable grid position
+        # with a cost proportional to the distance to the target and higher than any edges resulting
+        # from neighboring reachable grid positions. Lastly, there is an edge of cost zero going 
+        # from the unreachable grid position to the target grid position. This allows us to run a
+        # single search pass on the reverse graph.
         forward_graph: Dict[Vector3, Dict[Vector3, Tuple[float, float]]] = {}
         for grid in self.grids():
             forward_graph[grid] = {
@@ -431,7 +436,8 @@ class SearchPositionController:
             )
         forward_graph[self.unreachable_grid] = {self.target_grid: (0, 0)}
 
-        # Build the reverse graph.
+        # Build the reverse graph. We can clear the forward graph once this is done to save memory
+        # since it will not be used again.
         reverse_graph: Dict[Vector3, Dict[Vector3, Tuple[float, float]]] = {}
         for grid, neighbors in forward_graph.items():
             for neighbor, cost in neighbors.items():
@@ -440,12 +446,16 @@ class SearchPositionController:
                 reverse_graph[neighbor][grid] = cost
         forward_graph.clear()
 
-        # Initialize search state.
+        # Initialize search state. A tuple of two elements is used as the cost. The first element
+        # is non-zero if the search traversed an edge from the unreachable grid. The second is the
+        # normal cost to traverse between two neighbors. This means that we will always prefer to
+        # not use an edge from the unreachable grid if possible.
         queue: List[Tuple[Tuple[float, float], Vector3]] = [((0, 0), self.target_grid)]
         costs: Dict[Vector3, Tuple[float, float]] = {self.target_grid: (0, 0)}
         parents: Dict[Vector3, Union[Vector3, None]] = {self.target_grid: None}
 
-        # Run Dijkstra's search.
+        # Run Dijkstra's search. We do not terminate early because we want to find the shortest path
+        # from every possible grid position to the target (or the closest reachable position).
         while queue:
             cost, grid = heapq.heappop(queue)
             for neighbor in reverse_graph[grid]:
@@ -460,6 +470,7 @@ class SearchPositionController:
                     costs[neighbor] = new_cost
                     heapq.heappush(queue, (new_cost, neighbor))
 
+        # Return the parents map.
         return parents
 
     def grids(self) -> Generator[Vector3, None, None]:

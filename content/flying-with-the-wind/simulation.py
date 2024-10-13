@@ -106,7 +106,7 @@ def run_position_simulation(
     Runs a simulation with a fixed target position.
     """
     magnitude = Vector3(5.0, 5.0, 0.0)
-    dimensions = Vector3(10000.0, 10000.0, 2000.0)
+    dimensions = Vector3(4000.0, 4000.0, 2000.0)
     num_dimension_points = Vector3(10, 10, 5)
     wind_field = RandomField(
         magnitude, dimensions, num_dimension_points, generator=generator
