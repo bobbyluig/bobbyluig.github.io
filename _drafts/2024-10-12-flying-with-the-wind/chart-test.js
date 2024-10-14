@@ -40,10 +40,10 @@ chart.setOption({
       },
     },
   ],
-  options: Array.from({ length: 11 }, (_, i) => ({
+  options: Array.from({ length: 101 }, (_, i) => ({
     series: [
       {
-        data: data.slice(0, i * 100),
+        data: data.slice(0, i * 10),
       },
     ],
   })),
@@ -51,7 +51,10 @@ chart.setOption({
     axisType: 'category',
     left: 0,
     right: 0,
-    data: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+    controlStyle: {
+      showPlayBtn: false,
+    },
+    data: Array.from({ length: 101 }, (_, i) => i),
   },
 });
 
