@@ -1,4 +1,5 @@
-from typing import List, Union, cast
+import copy
+from typing import List, Union, cast, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -64,23 +65,20 @@ class Monitor:
         else:
             plt.show()
 
-    def plot_trajectory(
-        self, num_points: int = 5000, filename: Union[str, None] = None
-    ):
+    def plot_trajectory(self, filename: Union[str, None] = None):
         """
         Plots the balloon's trajectory over time, using color as time.
         """
-        num_points = min(num_points, len(self.position))
-        indices = np.linspace(0, len(self.position) - 1, num_points, dtype=np.int64)
-        points = np.array(self.position)[indices].reshape(-1, 3)
-        time = np.array(self.time)[indices]
+        points = np.array(self.position)
+        time = np.array(self.time)
+        x_bounds, y_bounds, z_bounds = self.get_square_bounds()
 
         fig = plt.figure()
         ax: Axes3D = cast(Axes3D, fig.add_subplot(projection="3d"))
         ax.scatter(
             points[:, 0],
             points[:, 1],
-            points[:, 2], # type: ignore
+            points[:, 2],  # type: ignore
             c=time,
             cmap="viridis",
             s=1,
@@ -88,6 +86,9 @@ class Monitor:
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
         ax.set_zlabel("z (m)")
+        ax.set_xlim3d(*x_bounds)
+        ax.set_ylim3d(*y_bounds)
+        ax.set_zlim3d(*z_bounds)
         ax.set_aspect("equal")
 
         if filename:
@@ -95,15 +96,12 @@ class Monitor:
         else:
             plt.show()
 
-    def animate_trajectory(self, num_points: int = 5000, filename: Union[str, None] = None):
+    def animate_trajectory(self, duration: float, filename: Union[str, None] = None):
         """
-        Animates the balloon's trajectory over time.
+        Animates the balloon's trajectory over time. The duration is in seconds.
         """
-        num_points = min(num_points, len(self.position))
-        indices = np.linspace(
-            0, len(self.position) - 1, num_points, dtype=np.int64, endpoint=False
-        )
-        points = np.array(self.position)[indices].reshape(-1, 3)
+        points = np.array(self.position)
+        x_bounds, y_bounds, z_bounds = self.get_square_bounds()
 
         fig = plt.figure()
         ax: Axes3D = cast(Axes3D, fig.add_subplot(projection="3d"))
@@ -111,11 +109,9 @@ class Monitor:
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
         ax.set_zlabel("z (m)")
-        limit = np.max(np.ptp(points, axis=0))
-        center = (points.max(axis=0) + points.min(axis=0)) / 2
-        ax.set_xlim3d(center[0] - limit / 2, center[0] + limit / 2)
-        ax.set_ylim3d(center[1] - limit / 2, center[1] + limit / 2)
-        ax.set_zlim3d(0, limit)
+        ax.set_xlim3d(*x_bounds)
+        ax.set_ylim3d(*y_bounds)
+        ax.set_zlim3d(*z_bounds)
         ax.set_aspect("equal")
 
         counter = ax.text2D(
@@ -128,11 +124,62 @@ class Monitor:
             counter.set_text(f"Time: {(self.time[num] / 60):.2f} minutes")
             return (line, counter)
 
+        interval = int(1000 * duration / len(points))
         ani = FuncAnimation(
-            fig, update, num_points, fargs=(line, points), interval=5, blit=True
+            fig, update, len(points), fargs=(line, points), interval=interval, blit=True
         )
 
         if filename:
             ani.save(filename, writer="ffmpeg")
         else:
             plt.show()
+
+    def get_square_bounds(
+        self,
+    ) -> Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float]]:
+        """
+        Returns the square bounds of the position.
+        """
+        points = np.array(self.position).reshape(-1, 3)
+        limit = np.max(np.ptp(points, axis=0))
+        center = (points.max(axis=0) + points.min(axis=0)) / 2
+
+        x_bounds = (center[0] - limit / 2, center[0] + limit / 2)
+        y_bounds = (center[1] - limit / 2, center[1] + limit / 2)
+        z_bounds = (0, limit)
+        return x_bounds, y_bounds, z_bounds
+
+    def interpolate(self, max_points: int) -> "Monitor":
+        """
+        Returns a monitor containing interpolated data with a fixed maximum number of points.
+        """
+        if len(self.time) <= max_points:
+            return copy.deepcopy(self)
+
+        np_time = np.array(self.time)
+        np_position = np.array(self.position)
+        np_velocity = np.array(self.velocity)
+        np_temperature = np.array(self.temperature)
+        np_fuel = np.array(self.fuel)
+        np_vent = np.array(self.vent)
+
+        i_time = np.linspace(np_time[0], np_time[-1], num=max_points)
+        i_position = np.array(
+            [np.interp(i_time, np_time, np_position[:, i]) for i in range(3)]
+        ).T
+        i_velocity = np.array(
+            [np.interp(i_time, np_time, np_velocity[:, i]) for i in range(3)]
+        ).T
+        i_temperature = np.interp(i_time, np_time, np_temperature)
+        i_fuel = np.interp(i_time, np_time, np_fuel)
+        i_vent = np.interp(i_time, np_time, np_vent)
+
+        monitor = Monitor()
+        monitor.time = i_time.tolist()
+        monitor.position = [Vector3(*p) for p in i_position.tolist()]
+        monitor.velocity = [Vector3(*v) for v in i_velocity.tolist()]
+        monitor.temperature = i_temperature.tolist()
+        monitor.fuel = i_fuel.tolist()
+        monitor.vent = i_vent.tolist()
+
+        return monitor

@@ -30,6 +30,7 @@ def run(
     of the simulation.
     """
     monitor = Monitor()
+    monitor.update(balloon)
 
     start_time = balloon.get_time()
     num_steps = int(math.ceil((total_time - start_time) / time_step))
@@ -126,4 +127,13 @@ def run_position_simulation(
 if __name__ == "__main__":
     generator = np.random.default_rng(0)
     monitor = run_position_simulation(SearchPositionController, generator=generator)
-    monitor.animate_trajectory()
+    monitor = monitor.interpolate(1000)
+    print(monitor.get_square_bounds())
+    print(
+        "["
+        + ", ".join(
+            f"[{v[0]:.3e}, {v[1]:.3e}, {v[2]:.3e}, {monitor.time[i]:.3e}]"
+            for i, v in enumerate(monitor.position)
+        )
+        + "]"
+    )
