@@ -4,16 +4,20 @@ chart.setOption({
   tooltip: {},
   xAxis3D: {
     type: 'value',
+    interval: 500,
     min: -200,
     max: 2000,
   },
   yAxis3D: {
     type: 'value',
+    interval: 500,
     min: 0,
     max: 2200,
   },
   zAxis3D: {
     type: 'value',
+    splitNumber: 1,
+    interval: 500,
     min: 0,
     max: 2200,
   },
@@ -21,22 +25,53 @@ chart.setOption({
     viewControl: {
       projection: 'orthographic',
       alpha: 30,
-      orthographicSize: 200,
+      orthographicSize: 300,
     },
     axisPointer: {
       show: false,
     },
+    boxWidth: 200,
   },
   series: [
     {
       type: 'line3D',
-      data: data,
+      data: [],
       name: 'Path',
       lineStyle: {
         width: 3.
       },
     },
   ],
+  options: [
+    {
+      series: [
+        {
+          data: [],
+        },
+      ],
+    },
+    {
+      series: [
+        {
+          data: data.slice(0, 500),
+        },
+      ],
+    },
+    {
+      series: [
+        {
+          data: data,
+        },
+      ],
+    },
+  ],
+  
+  timeline: {
+    axisType: 'value',
+    left: 0,
+    right: 0,
+    data: [0, 50, 100],
+  },
 });
 
 // const state = [];
