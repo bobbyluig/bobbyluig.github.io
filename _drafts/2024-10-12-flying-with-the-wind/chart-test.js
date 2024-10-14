@@ -40,10 +40,10 @@ chart.setOption({
       },
     },
   ],
-  options: Array.from({ length: 101 }, (_, i) => ({
+  options: Array.from({ length: 21 }, (_, i) => ({
     series: [
       {
-        data: data.slice(0, i * 10),
+        data: data.slice(0, i * 50),
       },
     ],
   })),
@@ -54,35 +54,6 @@ chart.setOption({
     controlStyle: {
       showPlayBtn: false,
     },
-    data: Array.from({ length: 101 }, (_, i) => i),
+    data: Array.from({ length: 21 }, (_, i) => i * 5),
   },
 });
-
-// const state = [];
-// let pause = false;
-
-// const e = document.getElementById('chart-test');
-// e.addEventListener('mouseenter', function() {
-//   console.log('mouseenter');
-//   pause = true;
-// });
-
-// e.addEventListener('mouseleave', function() {
-//   console.log('mouseleave');
-//   pause = false;
-// });
-
-// setInterval(() => {
-//   if (pause) {
-//     return;
-//   }
-//   if (state.length === data.length) {
-//     state.length = 0;
-//   }
-//   state.push(data[state.length]);
-//   chart.setOption({
-//     series: [{
-//       data: [...state],
-//     }]
-//   });
-// }, 20);
