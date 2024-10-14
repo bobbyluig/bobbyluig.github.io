@@ -16,7 +16,6 @@ chart.setOption({
   },
   zAxis3D: {
     type: 'value',
-    splitNumber: 1,
     interval: 500,
     min: 0,
     max: 2200,
@@ -30,7 +29,6 @@ chart.setOption({
     axisPointer: {
       show: false,
     },
-    boxWidth: 200,
   },
   series: [
     {
@@ -42,35 +40,18 @@ chart.setOption({
       },
     },
   ],
-  options: [
-    {
-      series: [
-        {
-          data: [],
-        },
-      ],
-    },
-    {
-      series: [
-        {
-          data: data.slice(0, 500),
-        },
-      ],
-    },
-    {
-      series: [
-        {
-          data: data,
-        },
-      ],
-    },
-  ],
-  
+  options: Array.from({ length: 11 }, (_, i) => ({
+    series: [
+      {
+        data: data.slice(0, i * 100),
+      },
+    ],
+  })),
   timeline: {
-    axisType: 'value',
+    axisType: 'category',
     left: 0,
     right: 0,
-    data: [0, 50, 100],
+    data: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
   },
 });
 
