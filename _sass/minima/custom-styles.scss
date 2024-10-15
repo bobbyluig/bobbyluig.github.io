@@ -26,10 +26,11 @@ table {
   margin-bottom: $spacing-unit * .5;
 }
 
-mjx-container {
+mjx-container[jax="CHTML"][display="true"] {
+  display: table;
   overflow-x: auto;
   overflow-y: hidden;
-  margin: $spacing-unit * .5 0;
+  margin: $spacing-unit * .5 auto;
 }
 
 .mermaid {

@@ -9,7 +9,8 @@ from vector import Vector3
 
 class Balloon:
     """
-    Represents a hot air balloon in 3D space.
+    Represents a hot air balloon in 3D space. Much of the dynamics is based on the script here: 
+    https://github.com/APMonitor/applications/blob/master/ASEE_Summer_School_2017/Demo2_Hot_Air_Balloon/Python/HotAirBalloon.py.
     """
 
     # Simulation parameters.
