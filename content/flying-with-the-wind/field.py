@@ -1,8 +1,7 @@
-import math
 from typing import Callable
 
 import numpy as np
-from scipy.spatial import KDTree
+from interp3d.interp_3d import Interp3D
 from vector import Vector3
 
 type Field3 = Callable[[Vector3], Vector3]
@@ -40,7 +39,6 @@ class RandomField:
         magnitude: Vector3,
         dimensions: Vector3,
         num_dimension_points: Vector3,
-        num_interpolation_points: int = 9,
         generator: np.random.Generator = np.random.default_rng(),
     ):
         """
@@ -48,32 +46,32 @@ class RandomField:
         """
         # Store parameters needed on every call.
         self.dimensions = dimensions
-        self.num_interpolation_points = num_interpolation_points
 
         # Make sure there is at least one point in each dimension.
-        num_dimension_points = Vector3(
-            max(1, num_dimension_points.x),
-            max(1, num_dimension_points.y),
-            max(1, num_dimension_points.z),
-        )
+        x_num = int(max(1, num_dimension_points.x))
+        y_num = int(max(1, num_dimension_points.y))
+        z_num = int(max(1, num_dimension_points.z))
 
         # Generate control points.
-        x = np.linspace(
-            -dimensions.x / 2, dimensions.x / 2, int(num_dimension_points.x)
+        control_points = (
+            np.linspace(-dimensions.x / 2, dimensions.x / 2, x_num),
+            np.linspace(-dimensions.y / 2, dimensions.y / 2, y_num),
+            np.linspace(0, dimensions.z, z_num),
         )
-        y = np.linspace(
-            -dimensions.y / 2, dimensions.y / 2, int(num_dimension_points.y)
-        )
-        z = np.linspace(0, dimensions.z, int(num_dimension_points.z))
-        control_points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
 
         # Generate random control vectors.
-        self.control_vectors = generator.uniform(
-            -magnitude, magnitude, size=(len(control_points), 3)
+        control_vectors = (
+            generator.uniform(-magnitude.x, magnitude.x, size=(x_num, y_num, z_num)),
+            generator.uniform(-magnitude.y, magnitude.y, size=(x_num, y_num, z_num)),
+            generator.uniform(-magnitude.z, magnitude.z, size=(x_num, y_num, z_num)),
         )
 
-        # Create a KDTree for fast nearest neighbor queries.
-        self.tree = KDTree(control_points)
+        # Create linear interpolators for a regular grid.
+        self.interpolators = (
+            Interp3D(control_vectors[0], *control_points),
+            Interp3D(control_vectors[1], *control_points),
+            Interp3D(control_vectors[2], *control_points),
+        )
 
     def __call__(self, position: Vector3) -> Vector3:
         """
@@ -86,20 +84,5 @@ class RandomField:
             min(max(position.z, 0), self.dimensions.z),
         )
 
-        # Find the nearest control points.
-        distances, indices = self.tree.query(position, k=self.num_interpolation_points)
-
-        # If the distance to the nearest point is zero, just return that point.
-        if math.isclose(distances[0], 0):
-            return Vector3(*self.control_vectors[indices[0]])
-
-        # Calculate the weights of the interpolation.
-        weights = distances
-        weights = 1 / weights
-        weights_sum = np.sum(weights)
-        weights /= weights_sum
-
-        # Interpolate.
-        return Vector3(
-            *(np.dot(weights, self.control_vectors[indices, i]) for i in range(3))
-        )
+        # Interpolate all components of the wind vector.
+        return Vector3(*(self.interpolators[i](position) for i in range(3)))

@@ -31,6 +31,29 @@ The air temperature inside the envelope is controlled by the fuel valve and the 
 
 ## Modelling Wind
 
+To move horizontally, a hot air balloon relies on varying wind velocities at different altitudes. A uniform wind field is not very interesting to simulate since the ballon will always move in the same direction on the horizontal plane. However, a detailed model of localized wind patterns is beyond the scope of this post. Instead, we rely on a simplified wind model based on random control points.
+
+Define the wind field as a function that takes in the position of the balloon and returns the wind velocity at that position. Given the boundaries of the simulation, we place evenly spaced control points. For each control point, we generate a random wind velocity within a specified magnitude. The wind velocity is the weighted average of the surrounding control points, with weights inversely proportional to the distance.
+
+```python
+# Generate control points and wind vectors.
+x = np.linspace(-1000, 1000, 20)
+y = np.linspace(-1000, 1000, 20)
+z = np.linspace(0, 2000, 20)
+control_points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
+control_vectors = np.random.uniform(-5, 5, size=(len(control_points), 3))
+
+# Evaluate the wind field.
+tree = KDTree(control_points)
+distances, indices = tree.query(position, k=8)
+weights = 1 / distances
+weights /= np.sum(weights)
+
+        return Vector3(
+            *(np.dot(weights, self.control_vectors[indices, i]) for i in range(3))
+        )
+```
+
 ## Simulation Setup
 
 ## Moving Vertically

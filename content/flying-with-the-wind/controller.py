@@ -255,6 +255,8 @@ class GreedyPositionController:
         for z in range(0, int(self.dimensions.z // self.grid_size.z)):
             test_grid = Vector3(current_grid.x, current_grid.y, z)
             v_wind = self.wind_field(self.grid_to_position(test_grid))
+            if v_wind.x == 0 and v_wind.y == 0:
+                continue
             v_wind = Vector3(v_wind.x, v_wind.y, 0).normalize()
 
             similarity = v_wind.dot(v_target)

@@ -10,6 +10,9 @@ from simulation import run
 
 
 def simulate_velocity(k_p, k_i, k_d):
+    """
+    Simulate the balloon with the given parameters for the velocity controller.
+    """
     controller = SequenceController(
         (0.0, VerticalVelocityController(3.0, k_p, k_i, k_d)),
         (1000.0, VerticalVelocityController(-2.0, k_p, k_i, k_d)),
@@ -34,6 +37,9 @@ def simulate_velocity(k_p, k_i, k_d):
 
 
 def objective_velocity(k_p, k_i, k_d):
+    """
+    Objective function for the velocity controller tuning.
+    """
     monitor, target_velocity = simulate_velocity(k_p, k_i, k_d)
     velocity = np.array([velocity.z for velocity in monitor.velocity])
     error = np.mean(np.abs(velocity - target_velocity))
@@ -41,6 +47,9 @@ def objective_velocity(k_p, k_i, k_d):
 
 
 def tune_velocity():
+    """
+    Tunes the velocity controller.
+    """
     bounds = {"k_p": (0, 200), "k_i": (0, 200), "k_d": (0, 200)}
     optimizer = BayesianOptimization(
         f=objective_velocity,
@@ -55,11 +64,11 @@ def tune_velocity():
         monitor, _ = simulate_velocity(**params)
         monitor.plot_state()
 
-    # Sample Outputs:
-    # {'target': -0.4672799464529887, 'params': {'k_d': 124.25863289470911, 'k_i': 34.790141360779124, 'k_p': 10.874548503904872}}
-
 
 def simulate_position(k_p, k_i, k_d):
+    """
+    Simulate the ballon with the given parameters for the position controller.
+    """
     controller = SequenceController(
         (0.0, VerticalPositionController(1000.0, k_p, k_i, k_d)),
         (1500.0, VerticalPositionController(500.0, k_p, k_i, k_d)),
@@ -84,6 +93,9 @@ def simulate_position(k_p, k_i, k_d):
 
 
 def objective_position(k_p, k_i, k_d):
+    """
+    Objective function for the position controller.
+    """
     monitor, target_position = simulate_position(k_p, k_i, k_d)
     position = np.array([position.z for position in monitor.position])
     error = np.mean(np.abs(position - target_position))
@@ -91,6 +103,9 @@ def objective_position(k_p, k_i, k_d):
 
 
 def tune_position():
+    """
+    Tune the position controller.
+    """
     bounds = {"k_p": (0, 0.02), "k_i": (0, 0.0), "k_d": (0, 0.0)}
     optimizer = BayesianOptimization(
         f=objective_position,
@@ -105,8 +120,6 @@ def tune_position():
         monitor, _ = simulate_position(**params)
         monitor.plot_state()
 
-    # Sample Outputs:
-    # {'target': -63.96113129058291, 'params': {'k_d': 0.0, 'k_i': 0.0, 'k_p': 0.009774907674593549}}
 
 if __name__ == "__main__":
     tune_velocity()
