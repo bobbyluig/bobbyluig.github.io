@@ -36,6 +36,13 @@
       diagramPadding: 1,
       useMaxWidth: false,
     },
+    themeVariables: {
+      fontFamily: 'Roboto',
+      fontSize: '16px',
+    },
+    flowchart: {
+      diagramPadding: 1,
+    },
   });
 </script>
 {% endif %}
@@ -43,16 +50,4 @@
 {% if page.features contains "chart" %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
-<script>
-  (function () {
-    const init = echarts.init;
-    echarts.init = function (dom, theme, opts) {
-      const chart = init(dom, theme, opts);
-      window.addEventListener('resize', function () {
-        chart.resize();
-      });
-      return chart;
-    };
-  })();
-</script>
 {% endif %}

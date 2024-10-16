@@ -219,14 +219,14 @@ With the simulation built, we can now analyze various aspects of the elevator sy
 It is interesting to see how living on different floors of the building affect the overall time spent in the elevator. We show the mean and max latencies of requests grouped by each floor (i.e., requests that start or end at a given floor fall into the group for that floor). 
 
 {% raw %}
-<div class="chart" id="chart-floor-latency-mean-max" style="aspect-ratio: 2"></div>
+<div class="chart" id="chart-floor-latency-mean-max"></div>
 <script src="chart-floor-latency-mean-max.js" type="module"></script>
 {% endraw %}
 
 There is around half a minute of difference in the mean request latencies between floor 4 and floor 20, with each floor contributing around 2.2 seconds. The relationship between max latency and floor is not as clear, but it is generally increasing as we go up in the building. Max latencies are also fairly sensitive to the exact sequence of requests and could increase a bit if we simulated more requests.
 
 {% raw %}
-<div class="chart" id="chart-floor-latency-histogram" style="aspect-ratio: 2"></div>
+<div class="chart" id="chart-floor-latency-histogram"></div>
 <script src="chart-floor-latency-histogram.js" type="module"></script>
 {% endraw %}
 
@@ -237,7 +237,7 @@ In the histogram above, we show the latencies of the middle 5k requests (when th
 There are frequently residents moving in to or out of the building. When that happens, one of the two elevators becomes reserved for a few hours and cannot be used for serving normal requests. We show the request latencies as a function of the number of elevators in the chart below. Mean and max values are computed from all requests regardless of starting and ending floor.
 
 {% raw %}
-<div class="chart" id="chart-elevator-count" style="aspect-ratio: 2"></div>
+<div class="chart" id="chart-elevator-count"></div>
 <script src="chart-elevator-count.js" type="module"></script>
 {% endraw %}
 
@@ -248,7 +248,7 @@ We see that there are diminishing returns when using more than two elevators, bu
 We can find the max throughput of the elevator system by comparing the mean request latencies between 200k requests and 100k requests. Below the threshold, we expect the ratio to be close to one. Above the threshold, we expect the ratio to be much larger than one because requests are arriving faster than the system can process them. As a result, more simulated requests lead to higher mean latencies.
 
 {% raw %}
-<div class="chart" id="chart-system-throughput" style="aspect-ratio: 2"></div>
+<div class="chart" id="chart-system-throughput"></div>
 <script src="chart-system-throughput.js" type="module"></script>
 {% endraw %}
 
@@ -259,7 +259,7 @@ We see that from the chart above that the max throughput is around 18 seconds be
 One last analysis that we want to perform is to see which parameter has the largest impact on mean request latency. To measure this, we will double or halve parameters in a direction that reduces latency and compare the their mean request latencies against the baseline. The results are shown in the chart below and sorted based on latency reduction.
 
 {% raw %}
-<div class="chart" id="chart-system-parameter" style="aspect-ratio: 2"></div>
+<div class="chart" id="chart-system-parameter"></div>
 <script src="chart-system-parameter.js" type="module"></script>
 {% endraw %}
 

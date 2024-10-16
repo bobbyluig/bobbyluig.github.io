@@ -1,17 +1,26 @@
-const chart = echarts.init(document.getElementById('chart-system-parameter'));
+const element = document.getElementById('chart-system-parameter');
+const chart = echarts.init(element, null, { width: 740, height: 380 });
 chart.setOption({
+  textStyle: {
+    fontFamily: 'Roboto',
+    fontSize: 16,
+  },
   tooltip: {
     trigger: 'axis',
     axisPointer: {
       type: 'shadow',
     },
     valueFormatter: (value) => value.toFixed(3),
+    textStyle: {
+      fontFamily: 'Roboto',
+      fontSize: 16,
+    },
   },
   grid: {
-    left: 30,
-    top: 40,
-    right: 10,
-    bottom: 25,
+    left: 35,
+    top: 45,
+    right: 5,
+    bottom: 30,
     containLabel: true,
   },
   legend: {},
@@ -21,7 +30,11 @@ chart.setOption({
       data: ['e_vel', 'e_d_vel', 'e_d_wai', 'e_acc', 'p_vel', 'e_cap'],
       name: 'Parameter',
       nameLocation: 'center',
-      nameGap: 30,
+      nameGap: 35,
+      axisLabel: {
+        fontFamily: 'Roboto',
+        fontSize: 16,
+      },
     }
   ],
   yAxis: [
@@ -29,7 +42,11 @@ chart.setOption({
       type: 'value',
       name: 'Ratio',
       nameLocation: 'center',
-      nameGap: 35,
+      nameGap: 45,
+      axisLabel: {
+        fontFamily: 'Roboto',
+        fontSize: 16,
+      },
     },
   ],
   series: [

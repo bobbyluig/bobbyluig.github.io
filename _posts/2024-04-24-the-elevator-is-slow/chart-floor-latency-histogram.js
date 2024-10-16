@@ -1,16 +1,25 @@
-const chart = echarts.init(document.getElementById('chart-floor-latency-histogram'));
+const element = document.getElementById('chart-floor-latency-histogram');
+const chart = echarts.init(element, null, { width: 740, height: 380 });
 chart.setOption({
+  textStyle: {
+    fontFamily: 'Roboto',
+    fontSize: 16,
+  },
   tooltip: {
     trigger: 'axis',
     axisPointer: {
       type: 'shadow'
     },
+    textStyle: {
+      fontFamily: 'Roboto',
+      fontSize: 16,
+    },
   },
   grid: {
-    left: 30,
-    top: 40,
-    right: 10,
-    bottom: 25,
+    left: 35,
+    top: 45,
+    right: 5,
+    bottom: 30,
     containLabel: true,
   },
   legend: {},
@@ -20,7 +29,11 @@ chart.setOption({
       data: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180],
       name: 'Latency (s)',
       nameLocation: 'center',
-      nameGap: 30,
+      nameGap: 35,
+      axisLabel: {
+        fontFamily: 'Roboto',
+        fontSize: 16,
+      },
     },
   ],
   yAxis: [
@@ -28,7 +41,11 @@ chart.setOption({
       type: 'value',
       name: 'Count',
       nameLocation: 'center',
-      nameGap: 50,
+      nameGap: 60,
+      axisLabel: {
+        fontFamily: 'Roboto',
+        fontSize: 16,
+      },
     },
   ],
   series: [
