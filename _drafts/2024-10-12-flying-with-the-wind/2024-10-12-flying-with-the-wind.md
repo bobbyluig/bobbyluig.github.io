@@ -33,26 +33,28 @@ The air temperature inside the envelope is controlled by the fuel valve and the 
 
 To move horizontally, a hot air balloon relies on varying wind velocities at different altitudes. A uniform wind field is not very interesting to simulate since the ballon will always move in the same direction on the horizontal plane. However, a detailed model of localized wind patterns is beyond the scope of this post. Instead, we rely on a simplified wind model based on random control points.
 
-Define the wind field as a function that takes in the position of the balloon and returns the wind velocity at that position. Given the boundaries of the simulation, we place evenly spaced control points. For each control point, we generate a random wind velocity within a specified magnitude. The wind velocity is the weighted average of the surrounding control points, with weights inversely proportional to the distance.
+Define the wind field as a function that takes in the position of the balloon and returns the wind velocity at that position. Given the boundaries of the simulation, we place evenly spaced control points. For each control point, we generate a random wind velocity within a specified magnitude. The output wind velocity at any point is determined through trilinear interpolation in the regular grid.
 
 ```python
-# Generate control points and wind vectors.
-x = np.linspace(-1000, 1000, 20)
-y = np.linspace(-1000, 1000, 20)
-z = np.linspace(0, 2000, 20)
-control_points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
-control_vectors = np.random.uniform(-5, 5, size=(len(control_points), 3))
-
-# Evaluate the wind field.
-tree = KDTree(control_points)
-distances, indices = tree.query(position, k=8)
-weights = 1 / distances
-weights /= np.sum(weights)
-
-        return Vector3(
-            *(np.dot(weights, self.control_vectors[indices, i]) for i in range(3))
-        )
+control_points = (
+    np.linspace(-1000, 1000, 20),
+    np.linspace(-1000, 1000, 20),
+    np.linspace(0, 2000, 20),
+)
+control_vectors = (
+    np.random.uniform(-5, 5, size=(20, 20, 20)),
+    np.random.uniform(-5, 5, size=(20, 20, 20)),
+    np.random.uniform(-1, 1, size=(20, 20, 20)),
+)
+wind_vector = (
+    internp(control_points, control_vectors[i], position)
+    for i in range(3)
+)
 ```
+
+The above snippet shows an example of evaluating a random wind field defined in a 2 km × 2 km × 2 km grid. The horizontal wind magnitude is up to 5 m/s, and the vertical wind magnitude is up to 1 m/s. We show SciPy's `internp`[^interpn] function here, but the actual implementation uses a faster `interp3d`[^interp3d] library since the wind field is evaluated in the hot path of the simulation.
+
+TODO: Show a 2D wind field.
 
 ## Simulation Setup
 
@@ -66,6 +68,8 @@ weights /= np.sum(weights)
 
 [^badgwell]: Badgwell, Thomas (2017). [Dynamic Simulation of a Hot Air Balloon](https://github.com/APMonitor/applications/blob/master/ASEE_Summer_School_2017/Demo2_Hot_Air_Balloon/HAB%20Simulation.pdf).
 [^ax7-77]: Head Balloons (2024). [AX7-77](https://www.headballoons.com/ax777.htm).
+[^interpn]: The SciPy community (2024). [interpn - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interpn.html).
+[^interp3d]: Glaser, Jens (2019). [A fast alternative for scipy.interpolate.RegularGridInterpolator in d=3](https://github.com/jglaser/interp3d).
 
 {% raw %}
 <div class="chart" id="chart-test" style="aspect-ratio: 1; max-width: 600px"></div>
