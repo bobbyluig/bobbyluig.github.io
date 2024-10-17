@@ -47,12 +47,12 @@ control_vectors = (
     np.random.uniform(-1, 1, size=(20, 20, 20)),
 )
 wind_vector = (
-    internp(control_points, control_vectors[i], position)
+    interpn(control_points, control_vectors[i], position)
     for i in range(3)
 )
 ```
 
-The above snippet shows an example of evaluating a random wind field defined in a 2 km × 2 km × 2 km grid. The horizontal wind magnitude is up to 5 m/s, and the vertical wind magnitude is up to 1 m/s. We show SciPy's `internp`[^interpn] function here, but the actual implementation uses a faster `interp3d`[^interp3d] library since the wind field is evaluated in the hot path of the simulation.
+The above snippet shows an example of evaluating a random wind field defined in a 2 km × 2 km × 2 km grid. The horizontal wind magnitude is up to 5 m/s, and the vertical wind magnitude is up to 1 m/s. We show SciPy's `interpn`[^interpn] function here, but the actual implementation uses a faster `interp3d`[^interp3d] library since the wind field is evaluated in the hot path of the simulation.
 
 {% raw %}
 <div class="chart" id="chart-wind-field"></div>
