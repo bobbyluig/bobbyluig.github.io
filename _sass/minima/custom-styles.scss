@@ -27,10 +27,9 @@ table {
 }
 
 mjx-container[jax="CHTML"][display="true"] {
-  display: table;
   overflow-x: auto;
   overflow-y: hidden;
-  margin: $spacing-unit * .5 auto;
+  margin: $spacing-unit * .5 0;
 }
 
 .mermaid {
@@ -78,7 +77,7 @@ pre code.hljs {
 .chart {
   display: flex;
   justify-content: center;
-  margin-bottom: $spacing-unit * .5;
+  margin: $spacing-unit * .5 0;
   overflow-x: auto;
 
   > * {

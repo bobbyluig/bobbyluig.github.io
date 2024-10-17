@@ -11,7 +11,7 @@
     startup: {
       ready() {
         const CHTMLmath = MathJax._.output.chtml.Wrappers.math.CHTMLmath;
-        delete CHTMLmath.styles['mjx-container[jax="CHTML"][display="true"]'];
+        delete CHTMLmath.styles['mjx-container[jax="CHTML"][display="true"]'].margin;
         MathJax.startup.defaultReady();
       }
     },
