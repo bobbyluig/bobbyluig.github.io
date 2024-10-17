@@ -54,7 +54,12 @@ wind_vector = (
 
 The above snippet shows an example of evaluating a random wind field defined in a 2 km × 2 km × 2 km grid. The horizontal wind magnitude is up to 5 m/s, and the vertical wind magnitude is up to 1 m/s. We show SciPy's `internp`[^interpn] function here, but the actual implementation uses a faster `interp3d`[^interp3d] library since the wind field is evaluated in the hot path of the simulation.
 
-TODO: Show a 2D wind field.
+{% raw %}
+<div class="chart" id="chart-wind-field"></div>
+<script src="chart-wind-field.js" type="module"></script>
+{% endraw %}
+
+The diagram above shows a 2D slice of the wind field from the previous example with an arbitrary seed. We can see that interpolation with control points does a fairly good job of making interesting wind fields while ensuring that there are no discontinuities. 
 
 ## Simulation Setup
 
@@ -72,6 +77,6 @@ TODO: Show a 2D wind field.
 [^interp3d]: Glaser, Jens (2019). [A fast alternative for scipy.interpolate.RegularGridInterpolator in d=3](https://github.com/jglaser/interp3d).
 
 {% raw %}
-<div class="chart" id="chart-test" style="aspect-ratio: 1; max-width: 600px"></div>
+<div class="chart" id="chart-test"></div>
 <script src="chart-test.js" type="module"></script>
 {% endraw %}

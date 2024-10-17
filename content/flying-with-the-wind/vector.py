@@ -53,7 +53,10 @@ class Vector3(tuple):
         return (self.x**2 + self.y**2 + self.z**2) ** 0.5
 
     def normalize(self):
-        return self / self.magnitude()
+        magnitude = self.magnitude()
+        if magnitude == 0:
+            return Vector3(0, 0, 0)
+        return self / magnitude
 
     def dot(self, other):
         return self.x * other.x + self.y * other.y + self.z * other.z
