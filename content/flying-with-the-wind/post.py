@@ -23,11 +23,11 @@ def wind_field():
     for point in points:
         wind = wind_field(Vector3(point[0], point[1], 500.0))
         out.append(
-            "[{:.3e},{:.3e},{:.3e},{:.3e}]".format(
+            "[{:.3g}, {:.3g}, {:.3g}, {:.3g}]".format(
                 point[0], point[1], wind.x / 5, wind.y / 5
             )
         )
-    print("[" + ",".join(out) + "]")
+    print("const data = [" + ", ".join(out) + "];")
 
 
 if __name__ == "__main__":
