@@ -50,7 +50,7 @@ class Monitor:
         axs[1].set_ylabel("Velocity (m/s)")
         axs[1].grid(True)
         axs[2].plot(self.time, self.temperature)
-        axs[2].set_ylabel("Temperature (°C)")
+        axs[2].set_ylabel("Temperature (K)")
         axs[2].grid(True)
         axs[3].plot(self.time, self.fuel)
         axs[3].set_ylabel("Fuel (%)")

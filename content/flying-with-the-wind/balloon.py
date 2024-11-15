@@ -9,7 +9,7 @@ from vector import Vector3
 
 class Balloon:
     """
-    Represents a hot air balloon in 3D space. Much of the dynamics is based on the script here: 
+    Represents a hot air balloon in 3D space. Much of the dynamics is based on the script here:
     https://github.com/APMonitor/applications/blob/master/ASEE_Summer_School_2017/Demo2_Hot_Air_Balloon/Python/HotAirBalloon.py.
     """
 
@@ -62,7 +62,7 @@ class Balloon:
         """
         Returns the current temperature in kelvin.
         """
-        return self.temperature * self.k_ratio_temperature - 273.15
+        return self.temperature * self.k_ratio_temperature
 
     def get_fuel(self) -> float:
         """
@@ -88,7 +88,7 @@ class Balloon:
         """
         self.vent = value / self.k_ratio_vent
 
-    def derivative(self, x: np.ndarray, _, wind_velocity: np.ndarray) -> npt.NDArray:
+    def derivative(self, x: np.ndarray, _) -> npt.NDArray:
         """
         Returns the derivative for computing the balloon's simulation trajectory. We assume that
         the wind velocity is constant.
@@ -97,6 +97,16 @@ class Balloon:
         position = x[0:3]
         velocity = x[3:6]
         temperature = x[6]
+
+        # Evaluate the wind velocity at the current position.
+        wind_velocity = (
+            np.array(
+                self.wind_field(Vector3(*(position * self.k_ratio_distance))),
+                dtype=np.float64,
+            )
+            / self.k_ratio_distance
+            * self.k_ratio_time
+        )
 
         # Evaluate the relatively wind velocity.
         relative_wind_velocity = wind_velocity - velocity
@@ -141,19 +151,10 @@ class Balloon:
         time_end = time_start + time_delta
         time_span = (time_start, time_end)
 
-        wind_velocity = (
-            np.array(
-                self.wind_field(Vector3(*(self.position * self.k_ratio_distance))),
-                dtype=np.float64,
-            )
-            / self.k_ratio_distance
-            * self.k_ratio_time
-        )
-
         x_start = np.concatenate(
             (self.position, self.velocity, [self.temperature]), dtype=np.float64
         )
-        x = odeint(self.derivative, x_start, time_span, (wind_velocity,))
+        x = odeint(self.derivative, x_start, time_span)
         x_end: List[float] = x[-1].tolist()
 
         self.position = Vector3(*x_end[0:3])

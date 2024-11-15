@@ -124,16 +124,8 @@ def run_position_simulation(
     )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  
     generator = np.random.default_rng(0)
     monitor = run_position_simulation(SearchPositionController, generator=generator)
     monitor = monitor.interpolate(1000)
-    print(monitor.get_square_bounds())
-    print(
-        "["
-        + ", ".join(
-            f"[{v[0]:.3e}, {v[1]:.3e}, {v[2]:.3e}, {monitor.time[i]:.3e}]"
-            for i, v in enumerate(monitor.position)
-        )
-        + "]"
-    )
+    monitor.animate_trajectory(30.0)

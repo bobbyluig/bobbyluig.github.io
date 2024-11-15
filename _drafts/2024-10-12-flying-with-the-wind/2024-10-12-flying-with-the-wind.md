@@ -10,7 +10,7 @@ On a romantic date 12,000 kilometers from home, I sat in a hot air balloon wonde
 ## Ballon Dynamics
 
 The dynamics of hot air balloons has been well-studied. We use the derivation from Badgwell[^badgwell] as the reference. Bagewell modeled the vertical dynamics of an AX7-77[^ax7-77]. The balloon that I rode in was a larger and heavier one, but we will build our simulation and controllers for an AX7-77 because it is useful to have a reference implementation to compare against.
-
+ 
 We will summarize the dynamics at a high level and extend it to incorporate horizontal motion. Define the following terms. Most of the derivation is omitted for simplicity.
 
 - Let $$\textbf{p} = \left(p_\textrm{x}, p_\textrm{y}, p_\textrm{z}\right)$$ be the position of the balloon.
@@ -27,7 +27,7 @@ $$\frac{d^2\textbf{p}}{dt^2} = \frac{1}{m_\text{t}} \left[ k_\text{d} \left| \te
 
 The drag force is a function of the relative wind velocity. This is a generalization of Badgwell's model where the wind velocity is zero in everywhere. The lift force is a function of the height of the ballon and the temperature of air in the envelope. The height is necessary to determine the outside air temperature, which Badgwell models as linearly decreasing with height.
 
-The air temperature inside the envelope is controlled by the fuel valve and the vent valve. Increasing the fuel valve heats up the air in the envelope, while increasing the vent valve lets hot air out from the top of the envelope, effectively cooling the air inside. There is also heat dissipation as a result of the cooler outside air. Therefore, the derivative of envelope air temperature is a function of the fuel and vent valve positions along with the temperatures of the inside and outside air.
+The air temperature inside the envelope is controlled by the fuel valve and the vent valve. Increasing the fuel valve position heats up the air in the envelope, while increasing the vent valve position lets hot air out from the top of the envelope, effectively cooling the air inside. There is also heat dissipation as a result of the cooler outside air. Therefore, the derivative of envelope air temperature is a function of the fuel and vent valve positions along with the temperatures of the inside and outside air.
 
 ## Modelling Wind
 
@@ -61,7 +61,99 @@ The above snippet shows an example of evaluating a random wind field defined in 
 
 The diagram above shows a 2D slice of the wind field from the previous example with an arbitrary seed. We can see that interpolation with control points does a fairly good job of making interesting wind fields while ensuring that there are no discontinuities. 
 
-## Simulation Setup
+## Implementation
+
+We are interested in simulating the hot air ballon with the aforementioned dynamics under varying wind fields and with different controllers. This sections goes into some of the implementation details. The full source code is available [here](https://github.com/bobbyluig/bobbyluig.github.io/tree/main/content/flying-with-the-wind).
+
+### Balloon
+
+The core simulation loop for the ballon operates in fixed size time steps. In each step, we compute the derivative of the state vector consisting of position, velocity, and temperature. We then use `odeint`[^odeint] to compute the new state vector. Note that we evaluate the wind field in each call of the derivative function since it is more accurate, but it is also okay to assume that the wind field is constant for each step if the interval is small enough.
+
+```python
+class Balloon:
+    # ...
+
+    def step(self, time_step: float):
+        time_start = self.time
+        time_end = time_start + time_step
+        time_span = (time_start, time_end)
+
+        x_start = np.concatenate((self.position, self.velocity, [self.temperature]))
+        x = odeint(self.derivative, x_start, time_span)
+        x_end = x[-1].tolist()
+
+        self.position = x_end[0:3]
+        self.velocity = x_end[3:6]
+        self.temperature = x_end[6]
+
+        if self.position[-1] <= 0.0:
+            self.position = np.array((self.position.x, self.position.y, 0.0))
+            self.velocity = np.array((0.0, 0.0, 0.0))
+
+        self.time = time_end
+```
+
+A simplified implementation of the `step` function is shown above. Like Bagewell's implementation, we handle cases where the ballon is on the ground after a step by zeroing the velocity. This does not affect takeoff since the ballon should only ever be on the ground after a step if it is already on the ground with no vertical velocity or it is descending.
+
+Bagewell's derivation uses a dimensionless model. However, we do want to recover the dimensions in all of our simulation outputs. In the full implementation, the `Ballon` class interacts with the outside world in SI units, but stores its internal state in dimensionless values to simplify derivative calculations. The dimensioned wind field is passed in to a `Ballon` instance, and its outputs are scaled appropriately in the derivative. 
+
+### Controller
+
+The ballon is controlled by the fuel and vent valve positions. Each be independently set to a percentage value and is assumed to be fixed in a given time step. We generalize the controller as a function that takes in the current observable state of the ballon and outputs the valve positions that should be applied before the next simulation step.
+
+```python
+class FixedController:
+    def __init__(self, output: ControllerOutput):
+        self.output = output
+
+    def __call__(self, input: ControllerInput) -> ControllerOutput:
+        return self.output
+
+class SequenceController:
+    def __init__(self, *controllers: Tuple[float, Controller]):
+        self.controllers = sorted(controllers, key=lambda t: t[0], reverse=True)
+        self.last_controller = None
+
+    def __call__(self, input: ControllerInput) -> ControllerOutput:
+        while self.controllers and self.controllers[-1][0] <= input.time:
+            self.last_controller = self.controllers.pop()[1]
+
+        if self.last_controller is None:
+            return ControllerOutput(fuel=0.0, vent=0.0)
+
+        return self.last_controller(input)
+```
+
+We show two simple controllers that are useful for testing and tuning. The `FixedController` always returns the same output. The `SequenceController` takes in a sequence of controllers and switches between them based on the input time. More sophisticated controllers (described in a later section) can leverage other properties of the input state such as position and velocity.
+
+### Simulation
+
+Given the `Ballon` and `Controller`, we can run the simulation using a simple loop that is shown below. For most of our experiments, we set the time step to one second and the total time to two hours. This is similar to the real flight time of a hot air balloon, allows enough time to observe the behavior of different controllers, and can be fully simulated in just a few seconds.
+
+```python
+def simulate(
+    balloon: Balloon,
+    controller: Controller,
+    time_step: float,
+    total_time: float,
+) -> Monitor:
+    monitor = Monitor()
+    monitor.update(balloon)
+
+    start_time = balloon.get_time()
+    num_steps = int(math.ceil((total_time - start_time) / time_step))
+
+    for _ in range(num_steps):
+        controller_input = get_controller_input(balloon)
+        controller_output = controller(controller_input)
+        apply_controller_output(balloon, controller_output)
+        balloon.step(time_step)
+        monitor.update(balloon)
+
+    return monitor
+```
+
+Note that the simulation updates and returns a `Monitor` instance. This is used to track the internal state of the balloon over time and has methods for data interpolation, plotting, and animation.
 
 ## Moving Vertically
 
@@ -75,8 +167,4 @@ The diagram above shows a 2D slice of the wind field from the previous example w
 [^ax7-77]: Head Balloons (2024). [AX7-77](https://www.headballoons.com/ax777.htm).
 [^interpn]: The SciPy community (2024). [interpn - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interpn.html).
 [^interp3d]: Glaser, Jens (2019). [A fast alternative for scipy.interpolate.RegularGridInterpolator in d=3](https://github.com/jglaser/interp3d).
-
-{% raw %}
-<div class="chart" id="chart-test"></div>
-<script src="chart-test.js" type="module"></script>
-{% endraw %}
+[^odeint]: The SciPy community (2024). [odeint - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.odeint.html).

@@ -21,7 +21,7 @@ def wind_field():
 
     out = []
     for point in points:
-        wind = wind_field(Vector3(point[0], point[1], 500.0))
+        wind = wind_field(Vector3(point[0], point[1], 1000.0))
         out.append(
             "[{:.3g}, {:.3g}, {:.3g}, {:.3g}]".format(
                 point[0], point[1], wind.x / 5, wind.y / 5
