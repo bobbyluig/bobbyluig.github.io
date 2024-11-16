@@ -1,8 +1,8 @@
 from typing import List
 
 import numpy as np
-import numpy.typing as npt
 from field import Field3, UniformField
+from numba import jit
 from scipy.integrate import odeint
 from vector import Vector3
 
@@ -88,14 +88,12 @@ class Balloon:
         """
         self.vent = value / self.k_ratio_vent
 
-    def derivative(self, x: np.ndarray, _) -> npt.NDArray:
+    def derivative(self, x: np.ndarray, _) -> np.ndarray:
         """
         Returns the derivative for computing the balloon's simulation trajectory.
         """
         # Unpack the state vector.
         position = x[0:3]
-        velocity = x[3:6]
-        temperature = x[6]
 
         # Evaluate the wind velocity at the current position.
         wind_velocity = (
@@ -107,11 +105,47 @@ class Balloon:
             * self.k_ratio_time
         )
 
+        # Defer to the fast implementation.
+        return self.derivative_fast(
+            x,
+            wind_velocity,
+            self.fuel,
+            self.vent,
+            self.k_alpha,
+            self.k_beta,
+            self.k_delta,
+            self.k_gamma,
+            self.k_mu,
+            self.k_omega,
+        )
+
+    @staticmethod
+    @jit(nopython=True, cache=True)
+    def derivative_fast(
+        x: np.ndarray,
+        wind_velocity: np.ndarray,
+        fuel: float,
+        vent: float,
+        k_alpha: float,
+        k_beta: float,
+        k_delta: float,
+        k_gamma: float,
+        k_mu: float,
+        k_omega: float,
+    ) -> np.ndarray:
+        """
+        A fast implementation of the derivative function with all parameters passed in.
+        """
+        # Unpack the state vector.
+        position = x[0:3]
+        velocity = x[3:6]
+        temperature = x[6]
+
         # Evaluate the relatively wind velocity.
         relative_wind_velocity = wind_velocity - velocity
 
         # Evaluate the temperature at the current height.
-        temperature_at_height = 1.0 - self.k_delta * position[2]
+        temperature_at_height = 1.0 - k_delta * position[2]
 
         # Compute the derivative of position.
         ddt_position = velocity
@@ -119,26 +153,27 @@ class Balloon:
         # Compute the derivative of velocity. First, account for the drag force due to wind. Then,
         # apply buoyancy force and gravitation force.
         ddt_velocity = (
-            self.k_omega * relative_wind_velocity**2 * np.sign(relative_wind_velocity)
+            k_omega * relative_wind_velocity**2 * np.sign(relative_wind_velocity)
         )
         ddt_velocity[2] += (
-            self.k_alpha
-            * self.k_mu
-            * (temperature_at_height ** (self.k_gamma - 1.0))
+            k_alpha
+            * k_mu
+            * (temperature_at_height ** (k_gamma - 1.0))
             * (1.0 - (temperature_at_height / temperature))
-            - self.k_mu
+            - k_mu
         )
 
         # Compute the derivative of temperature.
         ddt_temperature = (
-            -(temperature - temperature_at_height) * (self.k_beta + self.vent)
-            + self.fuel
+            -(temperature - temperature_at_height) * (k_beta + vent) + fuel
         )
 
         # Concatenate the derivatives into a single vector.
-        return np.concatenate(
-            [ddt_position, ddt_velocity, [ddt_temperature]], dtype=np.float64
-        )
+        ddt_state = np.empty(7, dtype=np.float64)
+        ddt_state[0:3] = ddt_position
+        ddt_state[3:6] = ddt_velocity
+        ddt_state[6] = ddt_temperature
+        return ddt_state
 
     def step(self, duration: float):
         """

@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Tuple
 
 import numpy as np
 from numba import jit
@@ -47,26 +47,27 @@ class RandomField:
         # Store parameters needed on every call.
         self.dimensions = dimensions
 
-        # Make sure there is at least one point in each dimension.
-        x_num = int(max(1, num_dimension_points.x))
-        y_num = int(max(1, num_dimension_points.y))
-        z_num = int(max(1, num_dimension_points.z))
+        # Make sure there are at two points in each dimension.
+        x_num = int(max(2, num_dimension_points.x))
+        y_num = int(max(2, num_dimension_points.y))
+        z_num = int(max(2, num_dimension_points.z))
 
         # Generate control points.
-        control_points = (
+        self.control_points = (
             np.linspace(-dimensions.x / 2, dimensions.x / 2, x_num),
             np.linspace(-dimensions.y / 2, dimensions.y / 2, y_num),
             np.linspace(0, dimensions.z, z_num),
         )
-        self.control_points = control_points
 
         # Generate random control vectors.
-        control_vectors = (
-            generator.uniform(-magnitude.x, magnitude.x, size=(x_num, y_num, z_num)),
-            generator.uniform(-magnitude.y, magnitude.y, size=(x_num, y_num, z_num)),
-            generator.uniform(-magnitude.z, magnitude.z, size=(x_num, y_num, z_num)),
+        self.control_vectors = np.array(
+            [
+                generator.uniform(-magnitude.x, magnitude.x, (x_num, y_num, z_num)),
+                generator.uniform(-magnitude.y, magnitude.y, (x_num, y_num, z_num)),
+                generator.uniform(-magnitude.z, magnitude.z, (x_num, y_num, z_num)),
+            ],
+            dtype=np.float64,
         )
-        self.control_vectors = np.array(control_vectors, dtype=np.float64)
         self.control_vectors = np.moveaxis(self.control_vectors, 0, -1)
 
     def __call__(self, position: Vector3) -> Vector3:
@@ -88,52 +89,49 @@ class RandomField:
         )
 
     @staticmethod
-    @nit(nopython=True, cache=True)
-    def interpolate(points, values, xi):
-        x_points, y_points, z_points = points
+    @jit(nopython=True, cache=True)
+    def interpolate(
+        points: Tuple[np.ndarray, np.ndarray, np.ndarray],
+        values: np.ndarray,
+        xi: Tuple[float, float, float],
+    ):
+        # Unpack values.
+        points_x, points_y, points_z = points
         xi_x, xi_y, xi_z = xi
 
-        # Compute the deltas between consecutive grid points (assumed to be even spacing)
-        dx = x_points[1] - x_points[0]
-        dy = y_points[1] - y_points[0]
-        dz = z_points[1] - z_points[0]
+        # Compute the deltas between consecutive grid points.
+        d_x = points_x[1] - points_x[0]
+        d_y = points_y[1] - points_y[0]
+        d_z = points_z[1] - points_z[0]
 
-        # Find the indices based on deltas
-        i_x = int((xi_x - x_points[0]) / dx)
-        i_y = int((xi_y - y_points[0]) / dy)
-        i_z = int((xi_z - z_points[0]) / dz)
+        # Find the indices based on deltas.
+        i_x = int((xi_x - points_x[0]) / d_x)
+        i_y = int((xi_y - points_y[0]) / d_y)
+        i_z = int((xi_z - points_z[0]) / d_z)
 
-        # Ensure the indices are within bounds (clamping to grid limits)
-        i_x = max(0, min(i_x, len(x_points) - 2))
-        i_y = max(0, min(i_y, len(y_points) - 2))
-        i_z = max(0, min(i_z, len(z_points) - 2))
+        # Ensure the indices are within bounds.
+        i_x = max(0, min(i_x, points_x.shape[0] - 2))
+        i_y = max(0, min(i_y, points_y.shape[0] - 2))
+        i_z = max(0, min(i_z, points_z.shape[0] - 2))
 
-        # Get the surrounding grid points
-        x0 = x_points[i_x]
-        y0 = y_points[i_y]
-        z0 = z_points[i_z]
+        # Get the values at the 8 surrounding grid points.
+        v_000 = values[i_x, i_y, i_z]
+        v_001 = values[i_x, i_y, i_z + 1]
+        v_010 = values[i_x, i_y + 1, i_z]
+        v_011 = values[i_x, i_y + 1, i_z + 1]
+        v_100 = values[i_x + 1, i_y, i_z]
+        v_101 = values[i_x + 1, i_y, i_z + 1]
+        v_110 = values[i_x + 1, i_y + 1, i_z]
+        v_111 = values[i_x + 1, i_y + 1, i_z + 1]
 
-        # Get the values at the 8 surrounding grid points
-        v000 = values[i_x, i_y, i_z]
-        v001 = values[i_x, i_y, i_z + 1]
-        v010 = values[i_x, i_y + 1, i_z]
-        v011 = values[i_x, i_y + 1, i_z + 1]
-        v100 = values[i_x + 1, i_y, i_z]
-        v101 = values[i_x + 1, i_y, i_z + 1]
-        v110 = values[i_x + 1, i_y + 1, i_z]
-        v111 = values[i_x + 1, i_y + 1, i_z + 1]
-
-        # Compute the trilinear interpolation
-        dx_rel = (xi_x - x0) / dx
-        dy_rel = (xi_y - y0) / dy
-        dz_rel = (xi_z - z0) / dz
-
-        c00 = v000 + (v100 - v000) * dx_rel
-        c01 = v001 + (v101 - v001) * dx_rel
-        c10 = v010 + (v110 - v010) * dx_rel
-        c11 = v011 + (v111 - v011) * dx_rel
-
-        c0 = c00 + (c10 - c00) * dy_rel
-        c1 = c01 + (c11 - c01) * dy_rel
-
-        return c0 + (c1 - c0) * dz_rel
+        # Compute the trilinear interpolation.
+        relative_x = (xi_x - points_x[i_x]) / d_x
+        relative_y = (xi_y - points_y[i_y]) / d_y
+        relative_z = (xi_z - points_z[i_z]) / d_z
+        c_00 = v_000 + (v_100 - v_000) * relative_x
+        c_01 = v_001 + (v_101 - v_001) * relative_x
+        c_10 = v_010 + (v_110 - v_010) * relative_x
+        c_11 = v_011 + (v_111 - v_011) * relative_x
+        c_0 = c_00 + (c_10 - c_00) * relative_y
+        c_1 = c_01 + (c_11 - c_01) * relative_y
+        return c_0 + (c_1 - c_0) * relative_z
