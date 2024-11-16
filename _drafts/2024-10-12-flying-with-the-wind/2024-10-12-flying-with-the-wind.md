@@ -78,17 +78,16 @@ class Balloon:
         time_end = time_start + time_step
         time_span = (time_start, time_end)
 
-        x_start = np.concatenate((self.position, self.velocity, [self.temperature]))
-        x = odeint(self.derivative, x_start, time_span)
-        x_end = x[-1].tolist()
+        x_start = np.concatenate([self.position, self.velocity, [self.temperature]])
+        x_end = odeint(self.derivative, x_start, time_span)[-1]
 
         self.position = x_end[0:3]
         self.velocity = x_end[3:6]
         self.temperature = x_end[6]
 
         if self.position[-1] <= 0.0:
-            self.position = np.array((self.position.x, self.position.y, 0.0))
-            self.velocity = np.array((0.0, 0.0, 0.0))
+            self.position = np.array([self.position.x, self.position.y, 0.0])
+            self.velocity = np.array([0.0, 0.0, 0.0])
 
         self.time = time_end
 ```
@@ -156,6 +155,8 @@ def simulate(
 Note that the simulation updates and returns a `Monitor` instance. This is used to track the internal state of the balloon over time and has methods for data interpolation, plotting, and animation.
 
 ## Moving Vertically
+
+Before we can take full advantage of the wind field, we first need to develop a controller that can move the ballon to a target vertical position.
 
 ## Moving Horizontally
 

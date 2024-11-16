@@ -38,7 +38,7 @@ class Balloon:
         self.temperature: float = 1.0
         self.fuel: float = 0.0
         self.vent: float = 0.0
-        self.wind_field = wind_field
+        self.wind_field: Field3 = wind_field
 
     def get_time(self) -> float:
         """
@@ -90,8 +90,7 @@ class Balloon:
 
     def derivative(self, x: np.ndarray, _) -> npt.NDArray:
         """
-        Returns the derivative for computing the balloon's simulation trajectory. We assume that
-        the wind velocity is constant.
+        Returns the derivative for computing the balloon's simulation trajectory.
         """
         # Unpack the state vector.
         position = x[0:3]
@@ -138,7 +137,7 @@ class Balloon:
 
         # Concatenate the derivatives into a single vector.
         return np.concatenate(
-            (ddt_position, ddt_velocity, [ddt_temperature]), dtype=np.float64
+            [ddt_position, ddt_velocity, [ddt_temperature]], dtype=np.float64
         )
 
     def step(self, duration: float):
@@ -149,13 +148,12 @@ class Balloon:
 
         time_start = self.time
         time_end = time_start + time_delta
-        time_span = (time_start, time_end)
+        time_span = [time_start, time_end]
 
         x_start = np.concatenate(
-            (self.position, self.velocity, [self.temperature]), dtype=np.float64
+            [self.position, self.velocity, [self.temperature]], dtype=np.float64
         )
-        x = odeint(self.derivative, x_start, time_span)
-        x_end: List[float] = x[-1].tolist()
+        x_end = odeint(self.derivative, x_start, time_span)[-1]
 
         self.position = Vector3(*x_end[0:3])
         self.velocity = Vector3(*x_end[3:6])

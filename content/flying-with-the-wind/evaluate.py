@@ -1,5 +1,4 @@
 import multiprocessing
-import os
 from functools import partial
 from typing import List
 
@@ -70,7 +69,7 @@ def evaluate_one(controller_type: str, seed: int) -> float:
     return penalty(target, monitor)
 
 
-def evaluate(controller_type: str, num_simulations: int = 200) -> List[float]:
+def evaluate(controller_type: str, num_simulations: int = 100) -> List[float]:
     """
     Evaluates the given controller with the given number of simulations. Returns the penalties from
     the simulations.
@@ -90,4 +89,11 @@ def evaluate(controller_type: str, num_simulations: int = 200) -> List[float]:
 if __name__ == "__main__":
     for controller_type in ["Fixed", "Greedy", "Search"]:
         results = evaluate(controller_type)
-        print(controller_type, np.mean(results), np.median(results))
+        print(
+            "controller_type={}, mean={}, median={}, standard_deviation={}".format(
+                controller_type,
+                np.mean(results),
+                np.median(results),
+                np.std(results),
+            )
+        )
