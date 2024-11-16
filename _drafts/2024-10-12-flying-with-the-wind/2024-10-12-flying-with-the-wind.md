@@ -52,7 +52,7 @@ wind_vector = (
 )
 ```
 
-The above snippet shows an example of evaluating a random wind field defined in a 2 km × 2 km × 2 km grid. The horizontal wind magnitude is up to 5 m/s, and the vertical wind magnitude is up to 1 m/s. We show SciPy's `interpn`[^interpn] function here, but the actual implementation uses a faster `interp3d`[^interp3d] library since the wind field is evaluated in the hot path of the simulation.
+The above snippet shows an example of evaluating a random wind field defined in a 2 km × 2 km × 2 km grid. The horizontal wind magnitude is up to 5 m/s, and the vertical wind magnitude is up to 1 m/s. We show SciPy's `interpn`[^interpn] function here, but the actual implementation relies on compiled Numba[^numba] code since the wind field is evaluated in the hot path of the simulation.
 
 {% raw %}
 <div class="chart" id="chart-wind-field"></div>
@@ -67,7 +67,7 @@ We are interested in simulating the hot air ballon with the aforementioned dynam
 
 ### Balloon
 
-The core simulation loop for the ballon operates in fixed size time steps. In each step, we compute the derivative of the state vector consisting of position, velocity, and temperature. We then use `odeint`[^odeint] to compute the new state vector. Note that we evaluate the wind field in each call of the derivative function since it is more accurate, but it is also okay to assume that the wind field is constant for each step if the interval is small enough.
+The core simulation loop for the ballon operates in fixed size time steps. In each step, we compute the derivative of the state vector consisting of position, velocity, and temperature. We then use `odeint`[^odeint] to compute the new state vector. Note that the wind field is evaluated in each call of the derivative function for more simulation accuracy, but it is also okay to assume that the wind field is constant for each step if the interval is small enough.
 
 ```python
 class Balloon:
@@ -152,7 +152,7 @@ def simulate(
     return monitor
 ```
 
-Note that the simulation updates and returns a `Monitor` instance. This is used to track the internal state of the balloon over time and has methods for data interpolation, plotting, and animation.
+The simulation updates and returns a `Monitor` instance. This is used to track the internal state of the balloon over time and has methods for data interpolation, plotting, and animation.
 
 ## Moving Vertically
 
@@ -166,6 +166,6 @@ Before we can take full advantage of the wind field, we first need to develop a 
 
 [^badgwell]: Badgwell, Thomas (2017). [Dynamic Simulation of a Hot Air Balloon](https://github.com/APMonitor/applications/blob/master/ASEE_Summer_School_2017/Demo2_Hot_Air_Balloon/HAB%20Simulation.pdf).
 [^ax7-77]: Head Balloons (2024). [AX7-77](https://www.headballoons.com/ax777.htm).
-[^interpn]: The SciPy community (2024). [interpn - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interpn.html).
-[^interp3d]: Glaser, Jens (2019). [A fast alternative for scipy.interpolate.RegularGridInterpolator in d=3](https://github.com/jglaser/interp3d).
-[^odeint]: The SciPy community (2024). [odeint - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.odeint.html).
+[^interpn]: The SciPy Community (2024). [interpn - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interpn.html).
+[^numba]: Anaconda (2024). [Numba: A High Performance Python Compiler](https://github.com/numba/numba).
+[^odeint]: The SciPy Community (2024). [odeint - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.odeint.html).

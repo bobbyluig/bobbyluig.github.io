@@ -93,7 +93,7 @@ if __name__ == "__main__":
             "controller_type={}, mean={}, median={}, standard_deviation={}".format(
                 controller_type,
                 np.mean(results),
-                np.median(results),
+                np.median(results), 
                 np.std(results),
             )
         )
