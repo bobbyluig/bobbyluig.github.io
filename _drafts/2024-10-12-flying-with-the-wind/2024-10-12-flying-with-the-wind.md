@@ -210,6 +210,10 @@ We can see from the chart above that the tuned vertical position controller is a
 
 ## Extensions
 
+There are a few extensions that might be interesting to explore. First, we assume near-perfect knowledge of the wind field in our controllers, but this is not realistic. Pilots do plot out their courses using some wind data, but they do not know the exact horizontal velocity of the ballon until they are in the air. It would be interesting to develop a controller that can perform path finding with uncertainty in the search space. Rather than getting closest to a chosen point, we may want the controller to find the most likely points that are reachable. An application of this is to plan the best route for the ballon.
+
+When I was on the hot air ballon flight, I heard our pilot communicating wind data with other pilots in the same fleet. This led me to wonder if there was some way for multiple balloons to collaborate and find paths more precisely as a group by sharing wind data. In addition, the pilots had to make sure that the balloons did not collide with each other during landing and takeoff. It would be interesting to further explore the idea of multi-agent path finding when applied to hot air balloons.
+
 ## References
 
 [^badgwell]: Badgwell, Thomas (2017). [Dynamic Simulation of a Hot Air Balloon](https://github.com/APMonitor/applications/blob/master/ASEE_Summer_School_2017/Demo2_Hot_Air_Balloon/HAB%20Simulation.pdf).
