@@ -120,7 +120,7 @@ class Balloon:
         )
 
     @staticmethod
-    @jit(nopython=True, cache=True)
+    @jit
     def derivative_fast(
         x: np.ndarray,
         wind_velocity: np.ndarray,
@@ -185,9 +185,10 @@ class Balloon:
         time_end = time_start + time_delta
         time_span = [time_start, time_end]
 
-        x_start = np.concatenate(
-            [self.position, self.velocity, [self.temperature]], dtype=np.float64
-        )
+        x_start = np.empty(7, dtype=np.float64)
+        x_start[0:3] = self.position
+        x_start[3:6] = self.velocity
+        x_start[6] = self.temperature
         x_end = odeint(self.derivative, x_start, time_span)[-1]
 
         self.position = Vector3(*x_end[0:3])
