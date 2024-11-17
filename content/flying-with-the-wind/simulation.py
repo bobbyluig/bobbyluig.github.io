@@ -47,7 +47,9 @@ def run(
     return monitor
 
 
-def run_reference_simulation() -> Monitor:
+def run_reference_simulation(
+    generator: np.random.Generator = np.random.default_rng(),
+) -> Monitor:
     """
     Runs the reference simulation in a random field.
     """
@@ -61,6 +63,7 @@ def run_reference_simulation() -> Monitor:
             Vector3(5.0, 5.0, 0.0),
             Vector3(10000.0, 10000.0, 10000.0),
             Vector3(10, 10, 10),
+            generator=generator,
         )
     )
 

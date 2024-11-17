@@ -9,7 +9,7 @@ On a romantic date 12,000 kilometers from home, I sat in a hot air balloon wonde
 
 ## Ballon Dynamics
 
-The dynamics of hot air balloons has been well-studied. We use the derivation from Badgwell[^badgwell] as the reference. Bagewell modeled the vertical dynamics of an AX7-77[^ax7-77]. The balloon that I rode in was a larger and heavier one, but we will build our simulation and controllers for an AX7-77 because it is useful to have a reference implementation to compare against.
+The dynamics of hot air balloons has been well-studied. We use the derivation from Badgwell[^badgwell] as the reference. Badgwell modeled the vertical dynamics of an AX7-77[^ax7-77]. The balloon that I rode in was a larger and heavier one, but we will build our simulation and controllers for an AX7-77 because it is useful to have a reference implementation to compare against.
  
 We will summarize the dynamics at a high level and extend it to incorporate horizontal motion. Define the following terms. Most of the derivation is omitted for simplicity.
 
@@ -95,9 +95,9 @@ class Balloon:
         self.time = time_end
 ```
 
-A simplified implementation of the `step` function is shown above. Like Bagewell's implementation, we handle cases where the ballon is on the ground after a step by zeroing the velocity. This does not affect takeoff since the ballon should only ever be on the ground after a step if it is already on the ground with no vertical velocity or it is descending.
+A simplified `step` function is shown above. Like Badgwell's implementation, we handle cases where the ballon is on the ground after a step by zeroing the velocity. This does not affect takeoff since the ballon should only ever be on the ground after a step if it is already on the ground with no vertical velocity or it is descending. In the derivative, we also prevent horizontal wind velocity from affecting the ballon if it is on the ground so that there is no horizontal movement unless the ballon is in the air.
 
-Bagewell's derivation uses a dimensionless model. However, we do want to recover the dimensions in all of our simulation outputs. In the full implementation, the `Ballon` class interacts with the outside world in SI units, but stores its internal state in dimensionless values to simplify derivative calculations. The dimensioned wind field is passed in to a `Ballon` instance, and its outputs are scaled appropriately in the derivative. 
+Badgwell's derivation uses a dimensionless model. However, we do want to recover the dimensions in all of our simulation outputs. In the full implementation, the `Ballon` class interacts with the outside world in SI units, but stores its internal state in dimensionless values to simplify derivative calculations. The dimensioned wind field is passed in to a `Ballon` instance, and its outputs are scaled appropriately in the derivative. 
 
 ### Controller
 
@@ -155,11 +155,18 @@ def simulate(
     return monitor
 ```
 
-The simulation updates and returns a `Monitor` instance. This is used to track the internal state of the balloon over time and has methods for data interpolation, plotting, and animation.
+The simulation updates and returns a `Monitor` instance. This is used to track the internal state of the balloon over time and has methods for data interpolation, plotting, and animation. As an example, we show the path of the reference simulation[^reference] under a random wind field in the chart below.
+
+{% raw %}
+<div class="chart" id="chart-reference"></div>
+<script src="chart-reference.js" type="module"></script>
+{% endraw %}
 
 ## Moving Vertically
 
-Before we can take full advantage of the wind field, we first need to develop a controller that can move the ballon to a target vertical position.
+Before we can take full advantage of the wind field, we first need to develop a controller that can move the ballon to a target vertical position. 
+
+### PID Controller
 
 ## Moving Horizontally
 
@@ -172,3 +179,4 @@ Before we can take full advantage of the wind field, we first need to develop a 
 [^interpn]: The SciPy Community (2024). [interpn - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interpn.html).
 [^numba]: Anaconda (2024). [Numba: A High Performance Python Compiler](https://github.com/numba/numba).
 [^odeint]: The SciPy Community (2024). [odeint - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.odeint.html).
+[^reference]: Badgwell, Thomas (2017). [Hot Air Balloon Simulation and Control](https://apmonitor.com/pdc/index.php/Main/HotAirBalloonPredictiveControl).

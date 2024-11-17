@@ -1,6 +1,7 @@
 import numpy as np
 from field import RandomField
 from vector import Vector3
+from simulation import run_reference_simulation
 
 
 def wind_field():
@@ -30,5 +31,17 @@ def wind_field():
     print("const data = [" + ", ".join(out) + "];")
 
 
+def reference_with_wind():
+    monitor = run_reference_simulation(generator=np.random.default_rng(1))
+    monitor = monitor.interpolate(1000)
+
+    out = []
+    for point in monitor.position:
+        out.append("[{:.3g}, {:.3g}, {:.3g}]".format(point.x, point.y, point.z))
+    print("const data = [" + ", ".join(out) + "];")
+    print(monitor.get_square_bounds())
+
+
 if __name__ == "__main__":
-    wind_field()
+    # wind_field()
+    reference_with_wind()
