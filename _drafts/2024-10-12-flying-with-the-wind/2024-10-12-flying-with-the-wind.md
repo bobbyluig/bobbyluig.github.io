@@ -76,7 +76,7 @@ class Balloon:
     def step(self, time_step: float):
         time_start = self.time
         time_end = time_start + time_step
-        time_span = (time_start, time_end)
+        time_span = [time_start, time_end]
 
         x_start = np.empty(7, dtype=np.float64)
         x_start[0:3] = self.position
@@ -155,7 +155,7 @@ def simulate(
     return monitor
 ```
 
-The simulation updates and returns a `Monitor` instance. This is used to track the internal state of the balloon over time and has methods for data interpolation, plotting, and animation. As an example, we show the path of the reference simulation[^reference] under a random wind field in the chart below.
+The simulation updates and returns a `Monitor` instance. This is used to track the internal state of the balloon over time and has methods for data interpolation, plotting, and animation. As an example, we show the path of the reference simulation[^reference] under a random wind field with horizontal magnitude up to 10 m/s in the diagram below.
 
 {% raw %}
 <div class="chart" id="chart-reference"></div>
@@ -164,11 +164,29 @@ The simulation updates and returns a `Monitor` instance. This is used to track t
 
 ## Moving Vertically
 
-Before we can take full advantage of the wind field, we first need to develop a controller that can move the ballon to a target vertical position. 
+Before we can take full advantage of the wind field, we first need to develop a controller that can move the ballon to a target vertical position. To be somewhat realistic, we put a 4 m/s cap[^climb] on the maximum ascent and descent speeds even though the ballon can theoretically reach higher vertical speeds. 
 
-### PID Controller
+### Controller
+
+It turns out that PID controllers work surprisingly well for this use case even without any linearization. However, we cannot directly use a single PID controller with the setpoint as the desired vertical position because there would be no way to control the maximum velocity. Instead, we use a cascade of two PID controllers. The first controller targets a constant vertical position, and its output is used as the setpoint for the second controller that targets a constant vertical velocity.
+
+We discretize the output of the vertical position PID controller to 0.1 m/s since more fine-grained control is likely not realistic. The vertical velocity PID controller needs to output the positions for both the fuel and vent valves. Although it is possible for both to be non-zero at the same time, we use a single output where negative values are vent and positive values are fuel (i.e., vent and fuel are mutually exclusive). We also discretize the vent valve positions to 1%.
+
+### Tuning
+
+Both the vertical velocity and vertical position PID controllers need to be tuned in that order. Instead of manually trying gain values, we can use bayesian optimization[^bayesian] find the approximate best parameters. For both PID controllers, we use the negative mean absolute error as the objective function since it is simple and penalizes time away from the target sequence. More complex objectives can be used if we want to strictly prohibit overshooting at the cost of slower convergence.
+
+### Results
 
 ## Moving Horizontally
+
+### Fixed Controller
+
+### Greedy Controller
+
+### Search Controller
+
+### Results
 
 ## Extensions
 
@@ -180,3 +198,5 @@ Before we can take full advantage of the wind field, we first need to develop a 
 [^numba]: Anaconda (2024). [Numba: A High Performance Python Compiler](https://github.com/numba/numba).
 [^odeint]: The SciPy Community (2024). [odeint - SciPy Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.odeint.html).
 [^reference]: Badgwell, Thomas (2017). [Hot Air Balloon Simulation and Control](https://apmonitor.com/pdc/index.php/Main/HotAirBalloonPredictiveControl).
+[^climb]: Kämpf, Peter (2014). [How quickly can a hot air balloon climb?](https://aviation.stackexchange.com/questions/10008/how-quickly-can-a-hot-air-balloon-climb).
+[^bayesian]: Nogueira, Fernando (2014). [Bayesian Optimization: Open source constrained global optimization tool for Python](https://github.com/bayesian-optimization/BayesianOptimization).
