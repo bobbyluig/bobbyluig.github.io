@@ -55,8 +55,8 @@ wind_vector = (
 The above snippet shows an example of evaluating a random wind field defined in a 2 km × 2 km × 2 km grid. The horizontal wind magnitude is up to 5 m/s, and the vertical wind magnitude is up to 1 m/s. We show SciPy's `interpn`[^interpn] function here, but the actual implementation relies on compiled Numba[^numba] code since the wind field is evaluated in the hot path of the simulation.
 
 {% raw %}
-<div class="chart" id="chart-wind-field"></div>
-<script src="chart-wind-field.js" type="module"></script>
+<div class="chart" id="chart-field"></div>
+<script src="chart-field.js" type="module"></script>
 {% endraw %}
 
 The diagram above shows a 2D slice of the wind field from the previous example with an arbitrary seed. We can see that interpolation with control points does a fairly good job of making interesting wind fields while ensuring that there are no discontinuities. 
@@ -174,9 +174,29 @@ We discretize the output of the vertical position PID controller to 0.1 m/s sinc
 
 ### Tuning
 
-Both the vertical velocity and vertical position PID controllers need to be tuned in that order. Instead of manually trying gain values, we can use bayesian optimization[^bayesian] find the approximate best parameters. For both PID controllers, we use the negative mean absolute error as the objective function since it is simple and penalizes time away from the target sequence. More complex objectives can be used if we want to strictly prohibit overshooting at the cost of slower convergence.
+Both the vertical velocity and vertical position PID controllers need to be tuned in that order. Instead of manually trying gain values, we apply bayesian optimization[^bayesian] to find the approximate best parameters. For both PID controllers, we use the negative mean absolute error as the objective function since it is simple and penalizes time away from the target sequence. More complex objectives can be used if we want to strictly prohibit overshooting at the cost of slower convergence. 
+
+```python
+controller = SequenceController(
+    (0.0, VerticalPositionController(1000.0, k_p, k_i, k_d)),
+    (1500.0, VerticalPositionController(500.0, k_p, k_i, k_d)),
+    (3000.0, VerticalPositionController(750.0, k_p, k_i, k_d)),
+    (4500.0, VerticalPositionController(250.0, k_p, k_i, k_d)),
+)
+```
+
+The target sequence used to tune the vertical position PID controller is shown above. The construction is fairly arbitrary, but it allows the ballon to ascend and descend at varying altitudes. When using bayesian optimization, we consider P-only, I-only, D-only, PI, PD, and PID gain configurations since zero values on the boundaries are hard for the optimizer to explore by itself. We get fairly good results after only around 100 iterations.
 
 ### Results
+
+After tuning, we find that vertical velocity uses a full PID controller with a large derivative gain, while vertical position uses a P-only controller. This makes sense because the ballon is a high-inertia system. Envelope temperature changes slowly in response to fuel and vent valve positions, and the ballon also has a lot of momentum due to its mass.
+
+{% raw %}
+<div class="chart" id="chart-tune"></div>
+<script src="chart-tune.js" type="module"></script>
+{% endraw %}
+
+We can see from the chart above that the tuned vertical position controller is able to effectively track the target sequence while ensuring that velocity does not exceed 4 m/s when ascending or descending. This is not necessarily a realistic depiction of how a pilot would fly the ballon since we allow the fuel and vent valve positions to change once per second. We could increase the sample time of the PID controllers so that the output changes slower. 
 
 ## Moving Horizontally
 
