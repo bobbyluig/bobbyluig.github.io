@@ -81,7 +81,7 @@ class RandomField:
         """
         A helper function to create a compiled interpolation function.
         """
-        # Convert and capture constants in closure.
+        # Capture constants in closure.
         dim_x, dim_y, dim_z = dimensions
         points_x, points_y, points_z = control_points
         values = control_vectors
@@ -130,7 +130,7 @@ class RandomField:
             c_1 = c_01 + (c_11 - c_01) * relative_y
             return c_0 + (c_1 - c_0) * relative_z
 
-        # Return compiled function.
+        # Return the compiled function.
         return jit(interpolate)
 
     def __call__(self, position: Vector3) -> Vector3:
