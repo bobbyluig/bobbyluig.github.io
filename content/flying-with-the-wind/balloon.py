@@ -111,17 +111,18 @@ class Balloon:
         # Defer to the compiled derivative helper.
         return self.derivative_helper(x, wind_velocity, self.fuel, self.vent)
 
-    def make_derivative_helper(self):
+    @staticmethod
+    def make_derivative_helper():
         """
         Returns a compiled derivative helper function with all constants captured.
         """
         # Capture constants in closure.
-        k_alpha = self.k_alpha
-        k_beta = self.k_beta
-        k_delta = self.k_delta
-        k_gamma = self.k_gamma
-        k_mu = self.k_mu
-        k_omega = self.k_omega
+        k_alpha = Balloon.k_alpha
+        k_beta = Balloon.k_beta
+        k_delta = Balloon.k_delta
+        k_gamma = Balloon.k_gamma
+        k_mu = Balloon.k_mu
+        k_omega = Balloon.k_omega
 
         # Define the function to be compiled.
         def derivative_helper(
