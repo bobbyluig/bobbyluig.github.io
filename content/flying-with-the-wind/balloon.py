@@ -137,12 +137,13 @@ class Balloon:
             temperature = x[6]
 
             # If the balloon is on the ground, it should have no horizontal velocity and should not
-            # be affected by the horizontal wind velocity.
-            if position[2] <= 0.0:
-                velocity[0] = 0.0
-                velocity[1] = 0.0
-                wind_velocity[0] = 0.0
-                wind_velocity[1] = 0.0
+            # be affected by the horizontal wind velocity. Use a small constant to avoid integration
+            # issues during takeoff.
+            if position[2] <= 1e-10:
+                velocity[0] = 0
+                velocity[1] = 0
+                wind_velocity[0] = 0
+                wind_velocity[1] = 0
 
             # Evaluate the relatively wind velocity.
             relative_wind_velocity = wind_velocity - velocity

@@ -1,6 +1,6 @@
 import multiprocessing
 from functools import partial
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from balloon import Balloon
@@ -31,9 +31,9 @@ def penalty(target: Vector3, monitor: Monitor) -> float:
     return np.min(distance)
 
 
-def evaluate_one(controller_type: str, seed: int) -> float:
+def simulate_one(controller_type: str, seed: int) -> Tuple[Vector3, Monitor]:
     """
-    Evaluates the given controller with the given seed.
+    Simulates the given controller with the given seed.
     """
     generator = np.random.default_rng(seed)
 
@@ -66,6 +66,14 @@ def evaluate_one(controller_type: str, seed: int) -> float:
         show_progress=False,
     )
 
+    return target, monitor
+
+
+def evaluate_one(controller_type: str, seed: int) -> float:
+    """
+    Evaluates the given controller with the given seed.
+    """
+    target, monitor = simulate_one(controller_type, seed)
     return penalty(target, monitor)
 
 
@@ -93,7 +101,7 @@ if __name__ == "__main__":
             "controller_type={}, mean={}, median={}, standard_deviation={}".format(
                 controller_type,
                 np.mean(results),
-                np.median(results), 
+                np.median(results),
                 np.std(results),
             )
         )

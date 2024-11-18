@@ -237,7 +237,27 @@ Instead of searching in the forward graph, we run Dijkstra's algorithm on the re
 
 ### Results
 
-To compare the effectiveness of different controllers, we evaluate how close their trajectories get in the horizontal plane to a random target point 2 km away from the starting point under a random wind field with horizontal magnitude up to 10 m/s. Each controller is simulated 100 times with the same set of seeds. Note that we do not care about vertical distance to the target point since the vertical position is fully controllable. The raw results are shown below.
+To compare the effectiveness of different controllers, we evaluate how close their trajectories get in the horizontal plane to a random target point 2 km away from the starting point under a random wind field with horizontal magnitude up to 10 m/s. Each controller is simulated 100 times with the same set of seeds. Note that we do not care about vertical distance to the target point since the vertical position is fully controllable. The raw results are shown below. Note that the last bucket is $$[1900, \infty)$$.
+
+{% raw %}
+<div class="chart" id="chart-horizontal"></div>
+<script src="chart-horizontal.js" type="module"></script>
+{% endraw %}
+
+As expected, the search controller significantly outperforms the greedy controller and the fixed controller in most cases. There are instances where the greedy controller and search controller encounter wind fields that make it impossible to move towards the target. In around half of these simulations, the search controller is able to get within 100m of the target. This is reinforced in the summary statistics below.
+
+| Controller | Mean | Median | Standard Deviation |
+|:----------:|:----:|:------:|:------------------:|
+|    Fixed   | 1688 |  1796  |         345        |
+|   Greedy   |  729 |   473  |         707        |
+|   Search   |  424 |   162  |         542        |
+
+For a given seed, we show the trajectory of all three controllers below. We can see that the search controller gets to within a few meters of the target through a fairly complex path. The greedy controller does eventually get somewhat close to the target, but nowhere near as close as the search controller. The fixed controller eventually gets stuck in a dead zone with little to no wind velocity. 
+
+{% raw %}
+<div class="chart" id="chart-trajectory"></div>
+<script src="chart-trajectory.js" type="module"></script>
+{% endraw %}
 
 ## Extensions
 

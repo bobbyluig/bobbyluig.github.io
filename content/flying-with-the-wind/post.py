@@ -3,6 +3,7 @@ from field import RandomField
 from vector import Vector3
 from simulation import run_reference_simulation
 from tune import simulate_position
+from evaluate import evaluate, simulate_one
 
 
 def field():
@@ -77,7 +78,52 @@ def tune():
     print("const data_vent = [" + ", ".join(vent) + "];")
 
 
+def horizontal():
+    for controller_type in ["Fixed", "Greedy", "Search"]:
+        results = evaluate(controller_type)
+        histogram, bins = np.histogram(
+            results, bins=np.concatenate((np.arange(0, 2000, 100), [np.inf]))
+        )
+
+        values = []
+        for result in histogram:
+            values.append("{:.5g}".format(result))
+        print(
+            "const data_{} = [".format(controller_type.lower())
+            + ", ".join(values)
+            + "];"
+        )
+        print(bins)
+        print(
+            "controller_type={}, mean={}, median={}, standard_deviation={}".format(
+                controller_type,
+                np.mean(results),
+                np.median(results),
+                np.std(results),
+            )
+        )
+
+
+def trajectory():
+    for controller_type in ["Fixed", "Greedy", "Search"]:
+        target, monitor = simulate_one(controller_type, 0)
+        monitor = monitor.interpolate(1000)
+
+        out = []
+        for point in monitor.position:
+            out.append(
+                "[{:.5g}, {:.5g}, {:.5g}]".format(
+                    round(point.x), round(point.y), round(point.z)
+                )
+            )
+        print("const data_" + controller_type.lower() + " = [" + ", ".join(out) + "];")
+        print(monitor.get_square_bounds())
+        print(target)
+
+
 if __name__ == "__main__":
     # field()
     # reference()
-    tune()
+    # tune()
+    # horizontal()
+    trajectory()
