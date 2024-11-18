@@ -7,7 +7,7 @@ features: [chart, highlight, mathjax]
 
 On a romantic date 12,000 kilometers from home, I sat in a hot air balloon wondering how the pilot managed to steer the aircraft. After all, it seemed like the balloon only had controls to go up and down, yet the flight path seemed so intentional. I wanted to understand the dynamics of these balloons, and build a virtual controller capable of maneuvering them.
 
-## balloon Dynamics
+## Balloon Dynamics
 
 The dynamics of hot air balloons has been well-studied. We use the derivation from Badgwell[^badgwell] as the reference. Badgwell modeled the vertical dynamics of an AX7-77[^ax7-77]. The balloon that I rode in was a larger and heavier one, but we will build our simulation and controllers for an AX7-77 because it is useful to have a reference implementation to compare against.
  
@@ -25,7 +25,7 @@ The acceleration in each component is given by the following equation. We assume
 
 $$\frac{d^2\textbf{p}}{dt^2} = \frac{1}{m_\text{t}} \left[ k_\text{d} \left| \textbf{w} - \frac{d\textbf{p}}{dt} \right| \left[ \textbf{w} - \frac{d\textbf{p}}{dt} \right] + \begin{pmatrix} 0 \\ 0 \\ F_\text{l} - m_\text{p} g \end{pmatrix} \right] $$
 
-The drag force is a function of the relative wind velocity. This is a generalization of Badgwell's model where the wind velocity is zero in everywhere. The lift force is a function of the height of the balloon and the temperature of air in the envelope. The height is necessary to determine the outside air temperature, which Badgwell models as linearly decreasing with height.
+The drag force is a function of the relative wind velocity. This is a generalization of Badgwell's model where the wind velocity is zero everywhere. The lift force is a function of the height of the balloon and the temperature of air in the envelope. The height is necessary to determine the outside air temperature, which Badgwell models as linearly decreasing with height.
 
 The air temperature inside the envelope is controlled by the fuel valve and the vent valve. Increasing the fuel valve position heats up the air in the envelope, while increasing the vent valve position lets hot air out from the top of the envelope, effectively cooling the air inside. There is also heat dissipation as a result of the cooler outside air. Therefore, the derivative of envelope air temperature is a function of the fuel and vent valve positions along with the temperatures of the inside and outside air.
 
@@ -97,11 +97,11 @@ class Balloon:
 
 A simplified `step` function is shown above. Like Badgwell's implementation, we handle cases where the balloon is on the ground after a step by zeroing the velocity. This does not affect takeoff since the balloon should only ever be on the ground after a step if it is already on the ground with no vertical velocity or it is descending. In the derivative, we also prevent horizontal wind velocity from affecting the balloon if it is on the ground so that there is no horizontal movement unless the balloon is in the air.
 
-Badgwell's derivation uses a dimensionless model. However, we do want to recover the dimensions in all of our simulation outputs. In the full implementation, the `Balloon` class interacts with the outside world in SI units, but stores its internal state in dimensionless values to simplify derivative calculations. The dimensioned wind field is passed in to a `Balloon` instance, and its outputs are scaled appropriately in the derivative. 
+Badgwell's derivation uses a dimensionless model. However, we want to recover the dimensions in all of our simulation outputs. In the full implementation, the `Balloon` class interacts with the outside world in SI units, but stores its internal state in dimensionless values to simplify derivative calculations. The dimensioned wind field is passed in to a `Balloon` instance, and its outputs are scaled appropriately in the derivative. 
 
 ### Controller
 
-The balloon is controlled by the fuel and vent valve positions. Each be independently set to a percentage value and is assumed to be fixed in a given time step. We generalize the controller as a function that takes in the current observable state of the balloon and outputs the valve positions that should be applied before the next simulation step.
+The balloon is controlled by the fuel and vent valve positions. Each of them can be independently set to a percentage value and is assumed to be fixed in a given time step. We generalize the controller as a function that takes in the current observable state of the balloon and outputs the valve positions that should be applied before the next simulation step.
 
 ```python
 class FixedController:
@@ -196,7 +196,7 @@ After tuning, we find that vertical velocity uses a full PID controller with a l
 <script src="chart-tune.js" type="module"></script>
 {% endraw %}
 
-We can see from the chart above that the tuned vertical position controller is able to effectively track the target sequence while ensuring that velocity does not exceed 4 m/s when ascending or descending. This is not a realistic depiction of how a pilot would control the balloon since we allow the fuel and vent valve positions to change once per second. We could increase the sample time of the PID controllers so that the output changes slower, but this is sufficient for our purposes.
+We can see from the chart above that the tuned vertical position controller is able to effectively track the target sequence while ensuring that velocity does not exceed 4 m/s when ascending or descending. This is not a realistic depiction of how a pilot would control the balloon since we allow the fuel and vent valve positions to change once per second. We could increase the sample time of the PID controllers so that the outputs change slower, but the existing configuration is sufficient for our purposes.
 
 ## Moving Horizontally
 
@@ -219,17 +219,17 @@ This controller greedily finds the best height that the balloon should go to at 
 
 This controller performs path finding in 3D space. The idea is that we can output the sequence of heights along the shortest path from the current position to the target. Similar to the greedy controller, we discretize the input space into grids of 100 m. These grids are then used as vertices in the search graph. Edges are determined based on the direction of the wind at the center of each grid.
 
-It is not guaranteed that the balloon will actually follow the exact search path because edges are very approximate. Therefore, we want the controller to be able to efficiently switch to a new path if the balloon deviates. In addition, the target may not be reachable at all given the wind field. However, the search should still be able to find the reachable grid which is closest to the target. Given these considerations, we can construct the search graph in the following way.
+It is not guaranteed that the balloon will actually follow the exact search path because edges are very approximate. Therefore, we want the controller to be able to efficiently switch to a new path if the balloon deviates. In addition, the target may not be reachable at all given the wind field. However, the search should still be able to find the reachable grid which is closest to the target grid. Given these considerations, we can construct the search graph in the following way.
 
 1. Add all grids as vertices. Call these vertices $$v_{i,j,k}$$ where $$i$$, $$j$$, and $$k$$ are the indices of the grid.
-2. Add an unreachable vertex $$v_u$$. This vertex will only show up in the search path if the target is not reachable from the current position.
+2. Add an unreachable vertex $$v_u$$. This vertex will only show up in the search path if the target grid is not reachable from the current grid.
 3. Define the weight of an edge as $$\left( w_u, w_r \right)$$. $$w_u$$ is the cost of moving to the unreachable vertex. $$w_r$$ is the cost of moving to any other vertex. Comparison on weights should treat any non-zero $$w_u$$ as larger than any non-zero $$w_r$$. This is already how tuple comparison works in Python.
 4. For each $$v_{i,j,k}$$, add an edge to one of its four horizontally adjacent neighbors $$v_{i \pm 1,j \pm 1,k}$$ by looking at the dominant horizontal component of the wind vector at grid $$\left( i,j,k \right)$$. The weight of each edge is $$\left( 0, c \right)$$ where $$c$$ is the time it takes for the balloon to move between the two grids taking into account the projected wind velocity.
-5. For each $$v_{i,j,k}$$, add edges to $$v_{i,j,k+1}$$ and $$v_{i,j,k-1}$$. The balloon can always move vertically. The weight these edges are $$\left( 0, c \right)$$ where $$c$$ is the time it takes for the balloon to move between the two grids assuming the maximum vertical speed of 4 m/s.
-6. For each $$v_{i,j,k}$$, add an edge to $$v_u$$. The weight of each edge is $$\left( c, 0 \right)$$ where $$c$$ is the distance from grid $$\left( i,j,k \right)$$ to the target.
+5. For each $$v_{i,j,k}$$, add edges to $$v_{i,j,k+1}$$ and $$v_{i,j,k-1}$$. The balloon can always move vertically. The weight of these edges are $$\left( 0, c \right)$$ where $$c$$ is the time it takes for the balloon to move between the two grids assuming the maximum vertical speed of 4 m/s.
+6. For each $$v_{i,j,k}$$, add an edge to $$v_u$$. The weight of each edge is $$\left( c, 0 \right)$$ where $$c$$ is the distance from grid $$\left( i,j,k \right)$$ to the target grid.
 7. Add an edge from $$v_u$$ to the target grid with weight $$\left( 0, 0 \right)$$.
 
-Instead of searching in the forward graph, we run Dijkstra's algorithm on the reverse graph starting from the target grid. When the search terminates, we will have the shortest path from every position to the target grid. Even if the balloon deviates from the chosen path, we do not need to rerun the search. This allows us to implement the controller as follows.
+Instead of searching in the forward graph, we run Dijkstra's algorithm on the reverse graph starting from the target grid. When the search terminates, we will have the shortest path from every grid to the target grid. Even if the balloon deviates from the chosen path, we do not need to rerun the search. This allows us to implement the controller as follows.
 
 1. Construct the graph once on controller initialization. Run Dijkstra's algorithm on the reverse graph starting from the target grid. Store the output in a parent map.
 2. On controller invocation, if the balloon is in the same grid as the previous step, do nothing because the shortest path cannot change unless the balloon moves to a different grid.
@@ -237,14 +237,14 @@ Instead of searching in the forward graph, we run Dijkstra's algorithm on the re
 
 ### Results
 
-To compare the effectiveness of different controllers, we evaluate how close their trajectories get in the horizontal plane to a random target point 2 km away from the starting point under a random wind field with horizontal magnitude up to 10 m/s. Each controller is simulated 100 times with the same set of seeds. Note that we do not care about vertical distance to the target point since the vertical position is fully controllable. The raw results are shown below. Note that the last bucket is $$[1900, \infty)$$.
+To compare the effectiveness of different controllers, we evaluate how close their trajectories get in the horizontal plane to a random target point 2 km away from the starting point under a random wind field with horizontal magnitude up to 10 m/s. Each controller is simulated 100 times with the same set of seeds. Note that we do not care about vertical distance to the target point since the vertical position is fully controllable. The results are shown below. Note that the last bucket is $$[1900, \infty)$$.
 
 {% raw %}
 <div class="chart" id="chart-horizontal"></div>
 <script src="chart-horizontal.js" type="module"></script>
 {% endraw %}
 
-As expected, the search controller significantly outperforms the greedy controller and the fixed controller in most cases. There are instances where the greedy controller and search controller encounter wind fields that make it impossible to move towards the target. In around half of these simulations, the search controller is able to get within 100m of the target. This is reinforced in the summary statistics below.
+As expected, the search controller significantly outperforms the greedy controller and the fixed controller in most cases. There are instances where the greedy controller and search controller encounter wind fields that make it impossible to move towards the target. In around half of these simulations, the search controller is able to get within 100 m of the target. This is reinforced in the summary statistics below.
 
 | Controller | Mean | Median | Standard Deviation |
 |:----------:|:----:|:------:|:------------------:|
