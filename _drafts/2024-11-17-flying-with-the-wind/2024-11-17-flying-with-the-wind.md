@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Flying With the Wind"
-date: 2024-10-12
+date: 2024-11-17
 features: [chart, highlight, mathjax]
 ---
 
