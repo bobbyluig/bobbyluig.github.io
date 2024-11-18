@@ -234,7 +234,7 @@ class GreedyPositionController:
         """
         Returns the controller output for the given input.
         """
-        # If the ballon is in the same horizontal grid position as the target, then just target the 
+        # If the balloon is in the same horizontal grid position as the target, then just target the 
         # vertical position.
         position_grid = self.position_to_grid(input.position)
         target_grid = self.position_to_grid(self.target)

@@ -67,7 +67,7 @@ def tune_velocity():
 
 def simulate_position(k_p, k_i, k_d):
     """
-    Simulate the ballon with the given parameters for the position controller.
+    Simulate the balloon with the given parameters for the position controller.
     """
     controller = SequenceController(
         (0.0, VerticalPositionController(1000.0, k_p, k_i, k_d)),
