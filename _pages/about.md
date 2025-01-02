@@ -8,8 +8,11 @@ Hello! My name is Lujing. I currently work as a software engineer at Plaid. I am
 
 ## Work
 
+**Software Engineer at Anysphere**  
+November 2024 - Present
+
 **Software Engineer at Plaid**  
-August 2021 - Present
+August 2021 - November 2024
 
 ## Research
 
