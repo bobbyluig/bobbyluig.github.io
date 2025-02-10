@@ -108,8 +108,35 @@ systemctl restart docker
 
 After deploying this change to all of the nodes, DNS resolution errors fully subsided. Alternatively, we could have specified the DNS address for Docker through ECS container definitions, but this would have been much harder to deploy alongside the DNS caching changes to the underlying nodes. The above script requires no modification to existing container definitions and could be rolled back by cancelling the instance refresh.
 
-
 ## Two to Four
+
+After resolving the DNS issues (no pun intended), we decided to further increase the number of shards to four so that we could stop worrying about MongoDB reliability for a while. This actually went smoothly in production. However, DNS issues were not done with us yet. We started getting developer reports that they were not able to connect to MongoDB through their local backend. A familiar error showed up, with a different suffix.
+
+```text
+Error in connector: error creating a database connection.
+(Kind: An error occurred during DNS resolution: no record found for Query {
+  name: Name("_mongodb._tcp.***.***.mongodb.net.tail***.ts.net."),
+  query_type: SRV,
+  query_class: IN
+}, labels: {})
+```
+
+### Tailscale App Connector
+
+For context, our local backend can connect to the MongoDB cluster to read and write some debugging data. However, we do not want our cluster to be accessible from the public Internet. Instead, our Atlas deployment is peered with our AWS VPC. We deploy a Tailscale App Connector[^tailscale] in our VPC that acts as a bastion. Database access is controlled through Tailscale ACLs.
+
+The App Connector works by proxying DNS lookups for specific domains and routing relevant traffic through the bastion. Effectively, it configures the following in `/etc/resolv.conf` on a developer's machine where Tailscale is installed.
+
+```text
+search tail***.ts.net
+nameserver 100.100.100.100
+```
+
+`100.100.100.100` is the Tailscale DNS resolver. In our case, a DNS lookup to `*.mongodb.net` would be routed to the bastion through the Tailscale network as defined by the ACL. To debug, we tried using `mongosh` to connect locally, and that worked. We also tried doing an `nslookup`, and that also worked. However, one small detail was that the `Truncated` message did not show up. That is surprising since the SRV record definitely did not get smaller going from two shards to four shards.
+
+After some investigation, we stumbled upon an issue[^issue] which hinted at the fact that the Tailscale DNS server could respond with large UDP packets without properly marking a truncated bit. In particular, if the packet was large than the MTU, it would be fragmented. `nslookup` handles this gracefully, but we can only assume that `mongo-rust-driver` does not.
+
+There is a quick fix for this — avoid having the local backend perform the SRV record lookup. `mongo-rust-driver` does support the older connection string format of specifying each node in the MongoDB cluster. The additional required changes are going from `mongodb+srv://` to `mongodb://` and adding `ssl=true&authSource=admin` to the connection parameters.
 
 ## References
 
@@ -119,3 +146,5 @@ After deploying this change to all of the nodes, DNS resolution errors fully sub
 [^limit]: AWS re:Post (2024). [How can I determine whether my DNS queries to the Amazon-provided DNS server are failing due to VPC DNS throttling?](https://repost.aws/knowledge-center/vpc-find-cause-of-failed-dns-queries).
 [^still]: Still, Michael (2024). [Amazon Linux 2023, DNS, and systemd-resolved — a story of no caching](https://www.madebymikal.com/amazon-linux-2023-dns-and-systemd-resolved-a-story-of-no-caching/).
 [^docker]: Stack Overflow (2016). [Docker cannot resolve DNS on private network [closed]](https://stackoverflow.com/questions/39400886/docker-cannot-resolve-dns-on-private-network).
+[^tailscale]: Tailscale Docs (2024). [How app connectors work](https://tailscale.com/kb/1342/how-app-connectors-work).
+[^issue]: Github Issues (2024). [https://github.com/tailscale/tailscale/issues/13601](https://github.com/tailscale/tailscale/issues/13601).
