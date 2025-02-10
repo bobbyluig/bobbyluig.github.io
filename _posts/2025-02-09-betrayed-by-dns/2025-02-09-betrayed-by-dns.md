@@ -26,7 +26,7 @@ Error in connector: error creating a database connection.
 }, labels: {})
 ```
 
-This was quite concerning because it seemed like our services could not resolve the DNS for the cluster and were failing to connect to the database entirely. We made a few immediate observations.
+This was quite concerning because it seemed like our services could not resolve the DNS records for the cluster and were failing to connect to the database entirely. We made a few immediate observations.
 
 - The error only occurred on a small fraction of nodes.
 - The error spiked during deploys and then subsided over time. However, it never fully went away.
@@ -53,7 +53,7 @@ _mongodb._tcp.***.***.mongodb.net  service = 0 0 27016 ***-01-01.***.mongodb.net
 _mongodb._tcp.***.***.mongodb.net  service = 0 0 27016 ***-01-02.***.mongodb.net.
 ```
 
-Something that immediately caught our attention was the `Truncated` part. Why was the SRV record getting truncated? It turns out that the resolver first tries to query over UDP, but because the response is larger than 512 bytes, it can be truncated. This signals to the resolver to retry over TCP, which succeeds. Now, it became clear what change caused the errors. By increasing the number of shards from one to two, the SRV records became larger than 512 bytes, and this led to transient SRV record lookup failures.
+Something that immediately caught our attention was the `Truncated` part. Why was the SRV record getting truncated? It turns out that the resolver first tries to query over UDP, but because the response is larger than 512 bytes, it can be truncated[^truncation]. This signals to the resolver to retry over TCP, which succeeds. Now, it became clear what change caused the errors. By increasing the number of shards from one to two, the SRV records became larger than 512 bytes, and this led to transient SRV record lookup failures.
 
 ### DNS Rate Limits
 
@@ -63,7 +63,7 @@ We still had not gotten to the root cause of why lookups of large DNS records ov
 
 This could be it! A DNS lookup over TCP likely consumes more than 5 times the number of packets compared to that of a lookup over UDP due to overhead from the TCP handshake and ACKs. We did not see any dropped packets due to PPS rate allowance for the ENA. However, we still suspected that DNS lookups were being rate limited since there were few alternative explanations.
 
-The recommended solution was to enable DNS caching, which I had assumed was already enabled given that we were using Amazon Linux 2023 as the AMI, and Amazon has rate limits for their default DNS configuration.
+The recommended solution was to enable DNS caching, which we had assumed was already enabled given that we were using Amazon Linux 2023 as the AMI, and Amazon has rate limits for their default DNS configuration.
 
 ### Docker DNS Caching
 
@@ -80,9 +80,9 @@ ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 
 Now, looking at `/etc/resolv.conf`, we see that the nameserver is `127.0.0.53`. This indicates that DNS queries should be going through the local stub resolver and getting cached. We did some tests on the nodes to ensure that DNS resolution continued to work correctly and that there were cache hits.
 
-When we rolled out this change out to staging, there was a massive spike of errors from services failing to connect to Elasticache and other services on AWS. This time, it affected all services in a persistent manner. It seemed like enabling DNS caching somehow made it so that services could no longer resolve addresses in private subnets.
+When we rolled out this change to staging, there was a massive spike of errors from services failing to connect to Elasticache and other services on AWS. This time, it affected all services in a persistent manner. It seemed like enabling DNS caching somehow made it so that services could no longer resolve addresses in private subnets.
 
-We tested the resolution of those addresses on the nodes, so why are the services unable to resolve them? It turns out that Docker uses a different DNS configuration from that of the host[^docker]. In particular, it will copy the host's `/etc/resolv.conf`, exclude any local nameservers, then add default public DNS servers if there are nameservers remaining. The solution is to ensure that the local stub resolver also listens on the `docker0` interface and configure Docker to use that DNS server.
+We tested the resolution of those addresses on the nodes, so why were the services unable to resolve them? It turns out that Docker uses a different DNS configuration from that of the host[^docker]. In particular, it will copy the host's `/etc/resolv.conf`, exclude any local nameservers, then add default public DNS servers if there are no nameservers remaining. The solution is to ensure that the local stub resolver also listens on the `docker0` interface and configure Docker to use that DNS server.
 
 ```bash
 # Get the address of the Docker bridge interface.
@@ -132,11 +132,11 @@ search tail***.ts.net
 nameserver 100.100.100.100
 ```
 
-`100.100.100.100` is the Tailscale DNS resolver. In our case, a DNS lookup to `*.mongodb.net` would be routed to the bastion through the Tailscale network as defined by the ACL. To debug, we tried using `mongosh` to connect locally, and that worked. We also tried doing an `nslookup`, and that also worked. However, one small detail was that the `Truncated` message did not show up. That is surprising since the SRV record definitely did not get smaller going from two shards to four shards.
+`100.100.100.100` is the Tailscale DNS resolver. In our case, a DNS lookup to `*.mongodb.net` would be routed to the bastion through the Tailscale network as defined by the ACLs. To debug, we tried using `mongosh` to connect locally, and that worked. We also tried doing an `nslookup`, and that also worked. However, one small detail was that the `Truncated` message did not show up. That was surprising since the SRV record definitely did not get smaller going from two shards to four shards.
 
 After some investigation, we stumbled upon an issue[^issue] which hinted at the fact that the Tailscale DNS server could respond with large UDP packets without properly marking a truncated bit. In particular, if the packet was large than the MTU, it would be fragmented. `nslookup` handles this gracefully, but we can only assume that `mongo-rust-driver` does not.
 
-There is a quick fix for this — avoid having the local backend perform the SRV record lookup. `mongo-rust-driver` does support the older connection string format of specifying each node in the MongoDB cluster. The additional required changes are going from `mongodb+srv://` to `mongodb://` and adding `ssl=true&authSource=admin` to the connection parameters.
+There is a quick fix for this — avoid having the local backend perform the SRV record lookup. `mongo-rust-driver` does support the older connection string format of specifying each node in the MongoDB cluster. The additional required changes are going from `mongodb+srv://` to `mongodb://` and adding `ssl=true&authSource=admin` to the connection parameters. This is not ideal, but is acceptable for local development since we will not be changing the number of shards frequently.
 
 ## References
 
