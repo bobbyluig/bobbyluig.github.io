@@ -134,7 +134,7 @@ nameserver 100.100.100.100
 
 `100.100.100.100` is the Tailscale DNS resolver. In our case, a DNS lookup to `*.mongodb.net` would be routed to the bastion through the Tailscale network as defined by the ACLs. To debug, we tried using `mongosh` to connect locally, and that worked. We also tried doing an `nslookup`, and that also worked. However, one small detail was that the `Truncated` message did not show up. That was surprising since the SRV record definitely did not get smaller going from two shards to four shards.
 
-After some investigation, we stumbled upon an issue[^issue] which hinted at the fact that the Tailscale DNS server could respond with large UDP packets without properly marking a truncated bit. In particular, if the packet was large than the MTU, it would be fragmented. `nslookup` handles this gracefully, but we can only assume that `mongo-rust-driver` does not.
+After some investigation, we stumbled upon an issue[^issue] which hinted at the fact that the Tailscale DNS server could respond with large UDP packets without properly marking a truncated bit. In particular, if the packet was larger than the MTU, it would be fragmented. `nslookup` handles this gracefully, but we can only assume that `mongo-rust-driver` does not.
 
 There is a quick fix for this — avoid having the local backend perform the SRV record lookup. `mongo-rust-driver` does support the older connection string format of specifying each node in the MongoDB cluster. The additional required changes are going from `mongodb+srv://` to `mongodb://` and adding `ssl=true&authSource=admin` to the connection parameters. This is not ideal, but is acceptable for local development since we will not be changing the number of shards frequently.
 
