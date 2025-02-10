@@ -67,6 +67,46 @@ The recommended solution was to enable DNS caching, which I had assumed was alre
 
 ### Docker DNS Caching
 
+Fortunately, there is a great post[^still] that describes this exact issue with Amazon Linux 2023. It turns out that `systemd-resolved` (which can perform DNS caching) is installed, but disabled by default. We use a user data script to initialize the EC2 instances. Below is an example addition that enables DNS caching through a local stub resolver. 
+
+```bash
+# Enable the stub listener.
+rm /usr/lib/systemd/resolved.conf.d/resolved-disable-stub-listener.conf
+systemctl restart systemd-resolved
+
+# Link the stub resolver configuration to /etc/resolv.conf.
+ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+```
+
+Now, looking at `/etc/resolv.conf`, we see that the nameserver is `127.0.0.53`. This indicates that DNS queries should be going through the local stub resolver and getting cached. We did some tests on the nodes to ensure that DNS resolution continued to work correctly and that there were cache hits.
+
+When we rolled out this change out to staging, there was a massive spike of errors from services failing to connect to Elasticache and other services on AWS. This time, it affected all services in a persistent manner. It seemed like enabling DNS caching somehow made it so that services could no longer resolve addresses in private subnets.
+
+We tested the resolution of those addresses on the nodes, so why are the services unable to resolve them? It turns out that Docker uses a different DNS configuration from that of the host[^docker]. In particular, it will copy the host's `/etc/resolv.conf`, exclude any local nameservers, then add default public DNS servers if there are nameservers remaining. The solution is to ensure that the local stub resolver also listens on the `docker0` interface and configure Docker to use that DNS server.
+
+```bash
+# Get the address of the Docker bridge interface.
+systemctl start docker
+DOCKER_BRIDGE_IP=$(ip addr show docker0 | grep -Po 'inet \K[\d.]+')
+
+# Enable the stub listener and ensure it also listens on the bridge interface.
+rm /usr/lib/systemd/resolved.conf.d/resolved-disable-stub-listener.conf
+echo "DNSStubListenerExtra=${DOCKER_BRIDGE_IP}" | tee -a /etc/systemd/resolved.conf
+systemctl restart systemd-resolved
+
+# Create a copy of the stub resolver configuration so we can add a nameserver that
+# Docker can use when it copes the host's /etc/resolv.conf.
+cp /run/systemd/resolve/stub-resolv.conf /etc/stub-resolv.conf
+echo "nameserver ${DOCKER_BRIDGE_IP}" | tee -a /etc/stub-resolv.conf
+
+# Link the updated stub resolver configuration to /etc/resolv.conf.
+ln -sf /etc/stub-resolv.conf /etc/resolv.conf
+
+# Restart Docker to ensure changes are picked up.
+systemctl restart docker
+```
+
+After deploying this change to all of the nodes, DNS resolution errors fully subsided. Alternatively, we could have specified the DNS address for Docker through ECS container definitions, but this would have been much harder to deploy alongside the DNS caching changes to the underlying nodes. The above script requires no modification to existing container definitions and could be rolled back by cancelling the instance refresh.
 
 
 ## Two to Four
@@ -76,4 +116,6 @@ The recommended solution was to enable DNS caching, which I had assumed was alre
 [^prisma]: Github Discussions (2022). [What mongodb driver does Prisma use?](https://github.com/prisma/prisma/discussions/12886).
 [^srv]: Drumgoole, Joe (2021). [MongoDB 3.6: Here to SRV you with easier replica set connections](https://www.mongodb.com/developer/products/mongodb/srv-connection-strings/).
 [^truncation]: MyF5 (2021). [K91537308: Overview of the truncating rule when DNS response size is over 512 Bytes](https://my.f5.com/manage/s/article/K91537308).
-[^limit]: . [How can I determine whether my DNS queries to the Amazon-provided DNS server are failing due to VPC DNS throttling?](https://repost.aws/knowledge-center/vpc-find-cause-of-failed-dns-queries).
+[^limit]: AWS re:Post (2024). [How can I determine whether my DNS queries to the Amazon-provided DNS server are failing due to VPC DNS throttling?](https://repost.aws/knowledge-center/vpc-find-cause-of-failed-dns-queries).
+[^still]: Still, Michael (2024). [Amazon Linux 2023, DNS, and systemd-resolved — a story of no caching](https://www.madebymikal.com/amazon-linux-2023-dns-and-systemd-resolved-a-story-of-no-caching/).
+[^docker]: Stack Overflow (2016). [Docker cannot resolve DNS on private network [closed]](https://stackoverflow.com/questions/39400886/docker-cannot-resolve-dns-on-private-network).
